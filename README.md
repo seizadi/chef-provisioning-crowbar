@@ -1,4 +1,3 @@
-chef-metal
-==========
+# OpenCrowbar for Chef-Metal
 
-Crowbar to Chef-Metal Interface
+This repo contains the interface between Chef Metal (https://github.com/opscode/chef-metal/) and OpenCrowbar.
