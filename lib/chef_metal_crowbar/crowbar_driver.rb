@@ -26,17 +26,16 @@ require 'etc'
 require 'time'
 require 'cheffish/merged_config'
 require 'chef_metal_crowbar/recipe_dsl'
-
-#require 'rubygems'
-require 'net/http'
-require 'net/http/digest_auth'
-require 'uri'
-require 'json'
-#require 'getoptlong'
+require 'crowbar/core'
 
 module ChefMetalCrowbar
 
   class CrowbarDriver < ChefMetal::Driver
+
+    AVAILABLE_DEPLOYMENT  = 'available'
+    RESERVED_DEPLOYMENT   = 'reserved'
+    TARGET_NODE_ROLE      = "crowbar-managed-node"
+    KEY_ATTRIB            = "chef-server_admin_client_key"
 
     # Passed in a driver_url, and a config in the format of Driver.config.
     def self.from_url(driver_url, config)
@@ -47,58 +46,144 @@ module ChefMetalCrowbar
       super(driver_url, config)
     end
 
-    def crowbar_url
+    def crowbar_api
+      # relies on url & driver_config from Driver superclass
       scheme, crowbar_url = url.split(':', 2)
-      crowbar_url
+      Crowbar::Core.connect crowbar_url, driver_config
     end
-
-    def crowbar_site driver_url, driver_config
-      # build request
-      request_headers={
-        "Accept" => "application/json",
-        "Content-Type" => "application/json"}
-      #request_headers['x-return-attributes']=$attributes if $attributes
-      # build URL
-      uri = URI.parse(driver_url)
-      uri.user=driver_config['username'] || "crowbar"
-      uri.password=driver_config['username'] || "crowbar"
-      # starting HTTP session
-      res=nil
-      Net::HTTP.start(uri.host, uri.port) {|http|
-        http.read_timeout = $timeout
-        r = req.new(uri.request_uri,request_headers)
-        r.body = data if data
-        res = http.request r
-        Chef::Log.debug "(a) return code: #{res.code}"
-        Chef::Log.debug "(a) return body: #{res.body}"
-        Chef::Log.debug "(a) return headers:"
-        res.each_header do |h, v|
-          Chef::Log.debug "#{h}: #{v}"
-        end if $debug
-
-        if res['www-authenticate']
-          Chef::Log.debug "(a) uri: #{uri}"
-          Chef::Log.debug "(a) www-authenticate: #{res['www-authenticate']}"
-          Chef::Log.debug "(a) req-method: #{req::METHOD}"
-          auth=Net::HTTP::DigestAuth.new.auth_header(uri,
-                                                     res['www-authenticate'],
-                                                     req::METHOD)
-          r.add_field 'Authorization', auth
-          res = http.request r
-        end
-      }
-      res
-    end
-
 
     # Acquire a machine, generally by provisioning it.  Returns a Machine
     # object pointing at the machine, allowing useful actions like setup,
     # converge, execute, file and directory.
     def allocate_machine(action_handler, machine_spec, machine_options)
+      Core.connect crowbar_url
+
       # If the server does not exist, create it
       create_servers(action_handler, { machine_spec => machine_options }, Chef::ChefFS::Parallelizer.new(0))
       machine_spec
     end
+
+    def allocate_machine(action_handler, machine_spec, machine_options)
+      if !crowbar_api.node_exists?(machine_spec.location['server_id'])
+        # It doesn't really exist
+        action_handler.perform_action "Machine #{machine_spec.location['server_id']} does not really exist.  Recreating ..." do
+          machine_spec.location = nil
+        end
+      end
+      if !machine_spec.location
+        action_handler.perform_action "Creating server #{machine_spec.name} with options #{machine_options}" do
+          server = crowbar_api.allocate_server(machine_spec.name, machine_options)
+          server_id = server["id"]
+          machine_spec.location = {
+            'driver_url' => driver_url,
+            'driver_version' => ChefMetalCrowbar::VERSION,
+            'server_id' => server_id,
+            'bootstrap_key' => crowbar_api.ssh_private_key(server_id)
+          }
+        end
+      end
+    end
+
+    def ready_machine(action_handler, machine_spec, machine_options)
+      server_id = machine_spec.location['server_id']
+      server = crowbar_api.node(server_id)
+      if server["alive"] == 'false'
+        action_handler.perform_action "Powering up machine #{server_id}" do
+          crowbar_api.power(server_id, "on")
+        end
+      end
+
+      if server["state"] != 0
+        action_handler.perform_action "wait for machine #{server_id}" do
+          crowbar_api.wait_for_machine_to_have_status(server_id, 0)
+        end
+      end
+
+      # Return the Machine object
+      machine_for(machine_spec, machine_options)
+    end
+
+    def machine_for(machine_spec, machine_options)
+      server_id = machine_spec.location['server_id']
+      ssh_options = {
+        :auth_methods => ['publickey'],
+        :keys => [ get_key('bootstrapkey') ],
+      }
+      transport = ChefMetal::Transport::SSHTransport.new(server_id, ssh_options, {}, config)
+      convergence_strategy = ChefMetal::ConvergenceStrategy::InstallCached.new(machine_options[:convergence_options])
+      ChefMetal::Machine::UnixMachine.new(machine_spec, transport, convergence_strategy)
+    end
+
+    private
+
+
+    # hit node API to see if node exists (code 200 only)
+    def node_exists?(name)
+      exists?("node", name)
+    end
+
+    # hit deployment API to see if deployment exists (code 200 only)
+    def deployment_exists?(name)
+      exists?("deployment", name)
+    end
+
+    # using the attibutes, get the key
+    def ssh_private_key(name)
+      get(driver_url + API_BASE + "nodes/#{name}/attribs/#{KEY_ATTRIB}")
+    end
+
+    # follow getready process to allocate nodes
+    def allocate_node(name, machine_options)
+
+      # get available nodes
+      from_deployment = AVAILABLE_DEPLOYMENT
+      raise "Available Pool '#{from_deployment} does not exist" unless deployment_exists?(from_deployment)
+      pool = get(driver_url + API_BASE + "deployments/#{from_deployment}/nodes")
+      raise "No available nodes in pool #{from_deployment}" if pool.size == 0
+
+      # assign node from pool
+      node = pool[0]
+
+      # prepare for moving by moving the deployment to proposed
+      to_deployment = RESERVED_DEPLOYMENT
+      put(driver_url + API_BASE + "deployments/#{to_deployment}/propose")
+
+      # set alias (name) and reserve
+      node["alias"] = name
+      node["deployment"] = to_deployment
+      put(driver_url + API_BASE + "nodes/#{node["id"]}", node)
+
+      # bind the OS NodeRole if missing (eventually set the OS property)
+      bind = {:node=>node["id"], :role=>TARGET_NODE_ROLE, :deployment=>to_deployment}
+      # blindly add node role > we need to make this smarter and skip if unneeded
+      post(driver_url + API_BASE + "node_roles", bind)
+
+      # commit the deployment
+      put(driver_url + API_BASE + "deployments/#{to_deployment}/commit")
+
+      # at this point Crowbar will bring up the node in the background
+      # we can return the node handle to the user
+      node["name"]
+
+    end
+
+    def node(name)
+      get(driver_url + API_BASE + "nodes/#{name}")
+    end
+
+    def power(name, action="on")
+      put(driver_url + API_BASE + "nodes/#{name}/power?poweraction=#{action}")
+    end
+
+    def wait_for_machine_to_have_status(name, target_state)
+      node(name)["state"] == target_state
+    end
+
+    # debug messages
+    def debug(msg)
+      Chef::Log.debug msg
+    end
+
 
 #   include Chef::Mixin::ShellOut
 
