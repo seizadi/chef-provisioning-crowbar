@@ -27,9 +27,9 @@ Gem::Specification.new do |s|
   s.email = 'rob@zehicle.com'
   s.homepage = 'https://github.com/opscode/chef-metal-crowbar'
 
-  s.add_dependency 'chef'
-  s.add_dependency 'cheffish', '>= 0.4'
-  s.add_dependency 'chef-metal', '~> 0.12'
+  #s.add_dependency 'chef'
+  #s.add_dependency 'cheffish', '>= 0.4'
+  s.add_dependency 'chef-metal'
 
   #s.add_development_dependency 'rspec'
   s.add_development_dependency 'rake'
