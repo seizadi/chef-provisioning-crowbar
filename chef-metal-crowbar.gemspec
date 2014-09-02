@@ -22,17 +22,17 @@ Gem::Specification.new do |s|
   s.extra_rdoc_files = ['README.md', 'LICENSE' ]
   s.summary = 'Driver for creating Crowbar servers in Chef Metal.'
   s.license = 'Apache 2'
-  s.description = s.summary
+  s.description = 'Crowbar is an open-source, multi-purpose node deployment tool.'
   s.author = 'Rob Hirschfeld'
   s.email = 'rob@zehicle.com'
   s.homepage = 'https://github.com/opscode/chef-metal-crowbar'
 
   #s.add_dependency 'chef'
   #s.add_dependency 'cheffish', '>= 0.4'
-  s.add_dependency 'chef-metal'
+  s.add_dependency 'chef-metal', '~> 0'
 
   #s.add_development_dependency 'rspec'
-  s.add_development_dependency 'rake'
+  s.add_development_dependency 'rake', '~> 0'
 
   s.bindir       = "bin"
   s.executables  = %w( )
