@@ -31,6 +31,7 @@ require 'crowbar/core'
 module ChefMetalCrowbar
 
   class CrowbarDriver < ChefMetal::Driver
+    include Crowbar
 
     AVAILABLE_DEPLOYMENT  = 'available'
     RESERVED_DEPLOYMENT   = 'reserved'
@@ -42,25 +43,29 @@ module ChefMetalCrowbar
       CrowbarDriver.new(driver_url, config)
     end
 
+    def self.canonicalize_url(driver_url, config)
+      [ "crowbar:abcd", config ]
+    end
+
     def initialize(driver_url, config)
       super(driver_url, config)
     end
 
     def crowbar_api
       # relies on url & driver_config from Driver superclass
-      scheme, crowbar_url = url.split(':', 2)
-      Crowbar::Core.connect crowbar_url, driver_config
+      scheme, crowbar_url = driver_url.split(':', 2)
+      #Core.connect crowbar_url, config
     end
 
     # Acquire a machine, generally by provisioning it.  Returns a Machine
     # object pointing at the machine, allowing useful actions like setup,
     # converge, execute, file and directory.
     def allocate_machine(action_handler, machine_spec, machine_options)
-      Core.connect crowbar_url
-
-      # If the server does not exist, create it
-      create_servers(action_handler, { machine_spec => machine_options }, Chef::ChefFS::Parallelizer.new(0))
-      machine_spec
+      Core.go crowbar_url
+#
+#      # If the server does not exist, create it
+#      create_servers(action_handler, { machine_spec => machine_options }, Chef::ChefFS::Parallelizer.new(0))
+#      machine_spec
     end
 
     def allocate_machine(action_handler, machine_spec, machine_options)
