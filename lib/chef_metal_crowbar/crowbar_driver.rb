@@ -54,7 +54,7 @@ module ChefMetalCrowbar
     def crowbar_api
       # relies on url & driver_config from Driver superclass
       scheme, crowbar_url = driver_url.split(':', 2)
-      Core.connect crowbar_url, config
+      #Core.connect crowbar_url, config
     end
 
     # Acquire a machine, generally by provisioning it.  Returns a Machine
