@@ -66,7 +66,7 @@ module ChefMetalCrowbar
 #      # If the server does not exist, create it
 #      create_servers(action_handler, { machine_spec => machine_options }, Chef::ChefFS::Parallelizer.new(0))
 #      machine_spec
-#    end
+    end
 
     def allocate_machine(action_handler, machine_spec, machine_options)
       if !crowbar_api.node_exists?(machine_spec.location['server_id'])
