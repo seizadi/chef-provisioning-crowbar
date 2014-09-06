@@ -31,24 +31,26 @@ require 'crowbar/core'
 module ChefMetalCrowbar
 
   class CrowbarDriver < ChefMetal::Driver
-    include Crowbar
 
-    AVAILABLE_DEPLOYMENT  = 'available'
-    RESERVED_DEPLOYMENT   = 'reserved'
+    ALLOCATE_DEPLOYMENT   = 'system'
+    READY_DEPLOYMENT      = 'ready'
     TARGET_NODE_ROLE      = "crowbar-managed-node"
     KEY_ATTRIB            = "chef-server_admin_client_key"
+    API_BASE              = "/api/v2"
 
+
+    def initialize(driver_url, config)
+      super(driver_url, config)
+      @crowbar = Crowbar.new
+    end
+    
     # Passed in a driver_url, and a config in the format of Driver.config.
     def self.from_url(driver_url, config)
       CrowbarDriver.new(driver_url, config)
     end
 
     def self.canonicalize_url(driver_url, config)
-      [ "crowbar:abcd", config ]
-    end
-
-    def initialize(driver_url, config)
-      super(driver_url, config)
+      [ driver_url, config ]
     end
 
     def crowbar_api
@@ -60,24 +62,24 @@ module ChefMetalCrowbar
     # Acquire a machine, generally by provisioning it.  Returns a Machine
     # object pointing at the machine, allowing useful actions like setup,
     # converge, execute, file and directory.
-    def allocate_machine(action_handler, machine_spec, machine_options)
-      Core.go crowbar_url
-#
-#      # If the server does not exist, create it
-#      create_servers(action_handler, { machine_spec => machine_options }, Chef::ChefFS::Parallelizer.new(0))
-#      machine_spec
-    end
 
     def allocate_machine(action_handler, machine_spec, machine_options)
-      if !crowbar_api.node_exists?(machine_spec.location['server_id'])
-        # It doesn't really exist
-        action_handler.perform_action "Machine #{machine_spec.location['server_id']} does not really exist.  Recreating ..." do
-          machine_spec.location = nil
+      
+      if machine_spec.location
+        if !node_exists?(machine_spec.location['server_id'])
+          # It doesn't really exist
+          action_handler.perform_action "Machine #{machine_spec.location['server_id']} does not really exist.  Recreating ..." do
+            machine_spec.location = nil
+          end
         end
       end
+
       if !machine_spec.location
-        action_handler.perform_action "Creating server #{machine_spec.name} with options #{machine_options}" do
-          server = crowbar_api.allocate_server(machine_spec.name, machine_options)
+        action_handler.perform_action "Crowbar: #{@crowbar.methods} Creating server #{machine_spec.name} with options #{machine_options}" do
+          nil
+        end
+        action_handler.perform_action "Crowbar: #{@crowbar} Creating server #{machine_spec.name} with options #{machine_options}" do
+          server = allocate_node(machine_spec.name, machine_options)
           server_id = server["id"]
           machine_spec.location = {
             'driver_url' => driver_url,
@@ -91,7 +93,7 @@ module ChefMetalCrowbar
 
     def ready_machine(action_handler, machine_spec, machine_options)
       server_id = machine_spec.location['server_id']
-      server = crowbar_api.node(server_id)
+      #server = crowbar_api.node(server_id)
       if server["alive"] == 'false'
         action_handler.perform_action "Powering up machine #{server_id}" do
           crowbar_api.power(server_id, "on")
@@ -127,30 +129,26 @@ module ChefMetalCrowbar
       exists?("node", name)
     end
 
-    # hit deployment API to see if deployment exists (code 200 only)
-    def deployment_exists?(name)
-      exists?("deployment", name)
-    end
-
     # using the attibutes, get the key
     def ssh_private_key(name)
-      get(driver_url + API_BASE + "nodes/#{name}/attribs/#{KEY_ATTRIB}")
+      #get(driver_url + API_BASE + "nodes/#{name}/attribs/#{KEY_ATTRIB}")
     end
 
     # follow getready process to allocate nodes
     def allocate_node(name, machine_options)
 
       # get available nodes
-      from_deployment = AVAILABLE_DEPLOYMENT
-      raise "Available Pool '#{from_deployment} does not exist" unless deployment_exists?(from_deployment)
-      pool = get(driver_url + API_BASE + "deployments/#{from_deployment}/nodes")
-      raise "No available nodes in pool #{from_deployment}" if pool.size == 0
+      from_deployment = ALLOCATE_DEPLOYMENT
+      raise "Crowbar deployment '#{from_deployment}' does not exist" unless @crowbar.deployment_exists?(from_deployment)
+      pool = @crowbar.nodes_in_deployment(from_deployment)
+      #pool = get(driver_url + API_BASE + "deployments/#{from_deployment}/nodes")
+      raise "No available nodes in pool '#{from_deployment}'" if pool.size == 0
 
       # assign node from pool
       node = pool[0]
 
       # prepare for moving by moving the deployment to proposed
-      to_deployment = RESERVED_DEPLOYMENT
+      to_deployment = READY_DEPLOYMENT
       put(driver_url + API_BASE + "deployments/#{to_deployment}/propose")
 
       # set alias (name) and reserve
