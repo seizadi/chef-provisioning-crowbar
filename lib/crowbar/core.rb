@@ -33,6 +33,21 @@ class Crowbar
   debug_output $stderr
   format :json
 
+  def commit_deployment(name)
+    deployment_set(name,"commit")
+  end
+
+  def propose_deployment(name)
+    deployment_set(name,"propose")
+  end
+
+  def deployment_set(name,state)
+    res = self.class.put("/deployments/#{name}/#{state}")
+    if res.code != 200
+      raise("Could not set deployment #{name} to #{state}. #{res.code} #{res.response}")
+    end
+  end
+
   def deployment_exists?(name)
     exists?("deployments",name)
   end
@@ -41,10 +56,46 @@ class Crowbar
     exists?("nodes",name)
   end
 
-  def nodes_in_deployment(name)
-    self.class.get("/deployments/#{name}/nodes")
+  def non_admin_nodes_in_deployment(name, attrs={})
+    #attrs = {'x-return-attributes' => '["admin"]' } 
+    n = nodes_in_deployment(name,attrs)
+    n.reject{ |e| e["admin"] == true } || []
   end
 
+  def nodes_in_deployment(name,attrs={})
+    self.class.get("/deployments/#{name}/nodes", :headers => attrs )
+  end
+
+  def set_deployment_to_proposed(name)
+    self.class.put("/deployments/#{name}/propose")
+  end
+  
+  def node_status(id, state)
+    attrs = {'x-return-attributes' => '["state"]' } 
+    res = self.class.get("/nodes/#{id}", :headers => attrs )
+    if res.code != 200
+      raise("Could not get node status #{res.code} #{res.response}")
+    end
+  end
+
+  def node(id, data)
+    res = self.class.put("/nodes/#{id}", :body => data)
+    if res.code != 200
+      raise("Could not update node #{res.code} #{res.response}")
+    end
+  end
+
+  def power(name,action)
+    res = self.class.put("/nodes/#{name}/power?poweraction=#{action}")
+    if res.code != 200
+      raise("Could not power #{action} node #{name}")
+    end
+  end
+
+  def bind_noderole(data)
+    res = self.class.put("/noderoles", data)
+      raise("Count not set node to role. #{data}")
+  end
 
   private
   def exists?(type, name, options={})

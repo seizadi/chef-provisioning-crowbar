@@ -140,29 +140,30 @@ module ChefMetalCrowbar
       # get available nodes
       from_deployment = ALLOCATE_DEPLOYMENT
       raise "Crowbar deployment '#{from_deployment}' does not exist" unless @crowbar.deployment_exists?(from_deployment)
-      pool = @crowbar.nodes_in_deployment(from_deployment)
-      #pool = get(driver_url + API_BASE + "deployments/#{from_deployment}/nodes")
-      raise "No available nodes in pool '#{from_deployment}'" if pool.size == 0
+      raise "No non-admin nodes in deployment" unless pool = @crowbar.non_admin_nodes_in_deployment(from_deployment)
+      
+      raise "No available nodes in pool '#{from_deployment}'" if !pool || pool.size == 0
 
-      # assign node from pool
+      # assign a node from pool
       node = pool[0]
 
-      # prepare for moving by moving the deployment to proposed
+      # prepare for moving by setting the deployment to proposed
       to_deployment = READY_DEPLOYMENT
-      put(driver_url + API_BASE + "deployments/#{to_deployment}/propose")
+      raise "Error setting deployment to proposed " unless @crowbar.propose_deployment(to_deployment)
 
       # set alias (name) and reserve
       node["alias"] = name
       node["deployment"] = to_deployment
-      put(driver_url + API_BASE + "nodes/#{node["id"]}", node)
+      raise "Setting node data failed." unless @crowbar.node(node["id"], node)
 
       # bind the OS NodeRole if missing (eventually set the OS property)
       bind = {:node=>node["id"], :role=>TARGET_NODE_ROLE, :deployment=>to_deployment}
       # blindly add node role > we need to make this smarter and skip if unneeded
-      post(driver_url + API_BASE + "node_roles", bind)
+      @crowbar.bind_noderole(bind)
 
       # commit the deployment
-      put(driver_url + API_BASE + "deployments/#{to_deployment}/commit")
+      @crowbar.commit_deployment(to_deployment)
+      #put(driver_url + API_BASE + "deployments/#{to_deployment}/commit")
 
       # at this point Crowbar will bring up the node in the background
       # we can return the node handle to the user
@@ -170,16 +171,13 @@ module ChefMetalCrowbar
 
     end
 
-    def node(name)
-      get(driver_url + API_BASE + "nodes/#{name}")
-    end
-
     def power(name, action="on")
-      put(driver_url + API_BASE + "nodes/#{name}/power?poweraction=#{action}")
+      @crowbar.power(name, action)
+      #put(driver_url + API_BASE + "nodes/#{name}/power?poweraction=#{action}")
     end
 
     def wait_for_machine_to_have_status(name, target_state)
-      node(name)["state"] == target_state
+      @crowbar.node(name)["state"] == target_state
     end
 
     # debug messages
