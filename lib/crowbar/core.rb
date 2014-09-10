@@ -69,7 +69,14 @@ class Crowbar
   def set_deployment_to_proposed(name)
     self.class.put("/deployments/#{name}/propose")
   end
-  
+
+  def ssh_private_key(name)
+    res = self.class.get("nodes/#{name}/attribs/#{attrib}")
+    if res.code != 200
+      raise("Could not get node #{name} ssh keys")
+    end
+  end
+
   def node_status(id, state)
     attrs = {'x-return-attributes' => '["state"]' } 
     res = self.class.get("/nodes/#{id}", :headers => attrs )
@@ -78,10 +85,17 @@ class Crowbar
     end
   end
 
-  def node(id, data)
+  def set_node(id, data)
     res = self.class.put("/nodes/#{id}", :body => data)
     if res.code != 200
       raise("Could not update node #{res.code} #{res.response}")
+    end
+  end
+
+  def node(id,attrs={})
+    res = self.class.get("/nodes/#{id}", :headers => attrs )
+    if res.code != 200
+      raise("Could not get node #{id} code: #{res.code} #{res.response}")
     end
   end
 
