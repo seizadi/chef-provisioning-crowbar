@@ -53,12 +53,6 @@ module ChefMetalCrowbar
       [ driver_url, config ]
     end
 
-    def crowbar_api
-      # relies on url & driver_config from Driver superclass
-      scheme, crowbar_url = driver_url.split(':', 2)
-      #Core.connect crowbar_url, config
-    end
-
     # Acquire a machine, generally by provisioning it.  Returns a Machine
     # object pointing at the machine, allowing useful actions like setup,
     # converge, execute, file and directory.
@@ -75,11 +69,9 @@ module ChefMetalCrowbar
       end
 
       if !machine_spec.location
-        action_handler.perform_action "Crowbar: #{@crowbar.methods} Creating server #{machine_spec.name} with options #{machine_options}" do
-          nil
-        end
         action_handler.perform_action "Crowbar: #{@crowbar} Creating server #{machine_spec.name} with options #{machine_options}" do
           server = allocate_node(machine_spec.name, machine_options)
+          # TODO: powerdown nodes with IPMI here?
           server_id = server["id"]
           machine_spec.location = {
             'driver_url' => driver_url,
@@ -100,12 +92,10 @@ module ChefMetalCrowbar
         end
       end
 
-      if server["state"] != 0
-        action_handler.perform_action "wait for machine #{server_id}" do
-          @crowbar.node_status(server_id, 0)
-          #crowbar_api.wait_for_machine_to_have_status(server_id, 0)
-        end
+      action_handler.perform_action "wait for machine #{server_id}" do
+        wait_for_machine_to_be_ready(server_id)
       end
+    end
 
       # Return the Machine object
       machine_for(machine_spec, machine_options)
@@ -124,7 +114,22 @@ module ChefMetalCrowbar
 
     private
 
-
+    def wait_for_machine_to_be_ready(id)
+      ready_deployment = READY_DEPLOYMENT
+      TARGET_NODE_ROLE      = "crowbar-managed-node"
+      KEY_ATTRIB            = "chef-server_admin_client_key"
+      # in the desired deployment
+      if @crowbar.find_node_in_deployment(id, ready_deployment)
+        if @crowbar.
+      # milestone noderole is active
+      #
+      # use crowbar key to ssh into it
+      #
+      # mark node available false so crowbar lets go
+      #
+      #@crowbar.node_status(server_id, 0)
+      #@crowbar.wait_for_machine_to_have_status(server_id, 0)
+      #crowbar_api.wait_for_machine_to_have_status(server_id, 0)
 
     # follow getready process to allocate nodes
     def allocate_node(name, machine_options)
@@ -141,7 +146,9 @@ module ChefMetalCrowbar
 
       # prepare for moving by setting the deployment to proposed
       to_deployment = READY_DEPLOYMENT
-      raise "Error setting deployment to proposed " unless @crowbar.propose_deployment(to_deployment)
+      if !@crowbar.deployment_state(to_deployment, "proposed") < 2
+        raise "Error setting deployment to proposed " unless @crowbar.propose_deployment(to_deployment)
+      end
 
       # set alias (name) and reserve
       node["alias"] = name
@@ -151,6 +158,7 @@ module ChefMetalCrowbar
       # bind the OS NodeRole if missing (eventually set the OS property)
       bind = {:node=>node["id"], :role=>TARGET_NODE_ROLE, :deployment=>to_deployment}
       # blindly add node role > we need to make this smarter and skip if unneeded
+      # query node for all its noderoles and skip if noderole is in finished state
       @crowbar.bind_noderole(bind)
 
       # commit the deployment

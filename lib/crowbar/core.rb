@@ -56,10 +56,16 @@ class Crowbar
     exists?("nodes",name)
   end
 
-  def non_admin_nodes_in_deployment(name, attrs={})
+  def non_admin_nodes_in_deployment(name, attrs=[])
     #attrs = {'x-return-attributes' => '["admin"]' } 
     n = nodes_in_deployment(name,attrs)
     n.reject{ |e| e["admin"] == true } || []
+  end
+
+
+  def find_node_in_deployment(node,deployment,attrs=[])
+    res = self.class.get("/deployments/#{deployment}/nodes", :headers => {'x-return-attributes' => attrs } )
+    res.index{|e|e["name"] == node || e["id"] == node} 
   end
 
   def nodes_in_deployment(name,attrs={})
