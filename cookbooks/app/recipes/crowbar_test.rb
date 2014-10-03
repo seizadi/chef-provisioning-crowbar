@@ -28,14 +28,14 @@ with_driver 'crowbar'
 #                 :signing_key_filename => '/root/.chef/crowbar.pem'
  
 with_machine_options :crowbar_options => { 
-  'bootstrap_options' => { os: 'ubuntu-12.04' } 
+  'bootstrap_options' => { :key_name => 'crowbar', os: 'ubuntu-12.04' } 
 } 
 num_servers = 1
  
 # build a sample server
 1.upto(num_servers) do |i|
   random = rand(10 ** 4)
-  machine "hostname-#{random}" do
-    chef_environment 'test'
+  machine "chef-metal-#{random}" do
+#    chef_environment 'test'
   end 
 end

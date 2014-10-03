@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#require 'chef/mixin/shell_out'
 require 'chef_metal/driver'
 require 'chef_metal/machine/windows_machine'
 require 'chef_metal/machine/unix_machine'
@@ -32,16 +33,20 @@ module ChefMetalCrowbar
 
   class CrowbarDriver < ChefMetal::Driver
 
+    #include Chef::Mixin::ShellOut
+
     ALLOCATE_DEPLOYMENT   = 'system'
     READY_DEPLOYMENT      = 'ready'
-    TARGET_NODE_ROLE      = "crowbar-managed-node"
-    KEY_ATTRIB            = "chef-server_admin_client_key"
+    #TARGET_NODE_ROLE      = "crowbar-managed-node"
+    TARGET_NODE_ROLE      = "crowbar-installed-node"
     API_BASE              = "/api/v2"
 
 
     def initialize(driver_url, config)
       super(driver_url, config)
       @crowbar = Crowbar.new
+      #config[:private_key_paths] = [ "$HOME/.ssh/id_rsa" ]
+      config[:log_level] = :debug
     end
     
     # Passed in a driver_url, and a config in the format of Driver.config.
@@ -70,104 +75,121 @@ module ChefMetalCrowbar
 
       if !machine_spec.location
         action_handler.perform_action "Crowbar: #{@crowbar} Creating server #{machine_spec.name} with options #{machine_options}" do
-          server = allocate_node(machine_spec.name, machine_options)
-          # TODO: powerdown nodes with IPMI here?
+          # TODO: Make sure SSH keys are found locally here?  Or in allocate_node?
+          # get ssh pubkey from current user
+          #result = shell_out("cat ~/.ssh/id_rsa.pub", :cwd => '$HOME')
+          #sshkey = result.stdout
+          #action_handler.report_progress "sshpubkey on admin server #{sshkey}\n"
+          # put it on the crowbar server provisioner
+          #@crowbar.add_sshkey(result.stdout)
+          
+          server = allocate_node(machine_spec.name, machine_options, action_handler)
           server_id = server["id"]
+          debug "allocate server_id = #{server_id}"
           machine_spec.location = {
             'driver_url' => driver_url,
             'driver_version' => ChefMetalCrowbar::VERSION,
             'server_id' => server_id,
-            'bootstrap_key' => @crowbar.ssh_private_key(server_id)
+            'target_node_role_id' => server["target_node_role_id"]
+           # 'bootstrap_key' => sshkey
           }
         end
       end
     end
 
     def ready_machine(action_handler, machine_spec, machine_options)
+      debug machine_spec.location
+ 
       server_id = machine_spec.location['server_id']
-      server = @crowbar.node(server_id)
-      if server["alive"] == 'false'
-        action_handler.perform_action "Powering up machine #{server_id}" do
-          @crowbar.power(server_id, "on")
-        end
-      end
+#      node = @crowbar.node(node_id)
+#      if node["alive"] == false
+#        action_handler.perform_action "Powering up machine #{server_id}" do
+#          @crowbar.power(server_id, "on")
+#        end
+#      end
 
-      action_handler.perform_action "wait for machine #{server_id}" do
-        wait_for_machine_to_be_ready(server_id)
+      nr_id = machine_spec.location['target_node_role_id']
+
+      action_handler.perform_action "done waiting for machine id: #{server_id}" do
+        loop do 
+          break if @crowbar.node_ready(server_id,nr_id)
+          sleep 5
+        end 
+        action_handler.report_progress "machine is ready. machine id: #{server_id}" 
       end
-    end
 
       # Return the Machine object
       machine_for(machine_spec, machine_options)
     end
 
     def machine_for(machine_spec, machine_options)
-      server_id = machine_spec.location['server_id']
       ssh_options = {
         :auth_methods => ['publickey'],
-        :keys => [ get_key('bootstrapkey') ],
       }
-      transport = ChefMetal::Transport::SSHTransport.new(server_id, ssh_options, {}, config)
-      convergence_strategy = ChefMetal::ConvergenceStrategy::InstallCached.new(machine_options[:convergence_options])
+      server_id = machine_spec.location['server_id']
+      node_admin_addresses = @crowbar.node_attrib(server_id, 'network-admin_addresses')
+      node_ipv4_admin_net_ip = node_admin_addresses['value'][0].split('/')[0]
+      node_ipv4_admin_net_ip = node_admin_addresses['value'][0].split('/')[0]
+      #node_ipv6_admin_net_ip = node_admin_addresses['value'][1]
+      
+      transport = ChefMetal::Transport::SSH.new(node_ipv4_admin_net_ip, 'root', ssh_options, {}, config)
+      convergence_strategy = ChefMetal::ConvergenceStrategy::InstallCached.new(machine_options[:convergence_options], config)
       ChefMetal::Machine::UnixMachine.new(machine_spec, transport, convergence_strategy)
     end
 
     private
-
-    def wait_for_machine_to_be_ready(id)
-      ready_deployment = READY_DEPLOYMENT
-      TARGET_NODE_ROLE      = "crowbar-managed-node"
-      KEY_ATTRIB            = "chef-server_admin_client_key"
-      # in the desired deployment
-      if @crowbar.find_node_in_deployment(id, ready_deployment)
-        if @crowbar.
-      # milestone noderole is active
-      #
-      # use crowbar key to ssh into it
-      #
-      # mark node available false so crowbar lets go
-      #
-      #@crowbar.node_status(server_id, 0)
-      #@crowbar.wait_for_machine_to_have_status(server_id, 0)
-      #crowbar_api.wait_for_machine_to_have_status(server_id, 0)
+    def create_ssh_transport(machine_spec)
+      crowbar_ssh_config = crowbar_ssh_config_for(machine_spec)
+      hostname = crowbar_ssh_config['HostName']
+      username = crowbar_ssh_config['User']
+      ssh_options = {
+        :port => '22',
+        :auth_methods => ['publickey'],
+        #:user_known_hosts_file => crowbar_ssh_config['UserKnownHostsFile'],
+        :paranoid => false, #yes_or_no(vagrant_ssh_config['StrictHostKeyChecking']),
+        :keys => [ '$HOME/.ssh/id_rsa' ],
+        :keys_only => true
+      }
+      ChefMetal::Transport::SSH.new(hostname, username, ssh_options, options, config)
+    end
 
     # follow getready process to allocate nodes
-    def allocate_node(name, machine_options)
+    def allocate_node(name, machine_options, action_handler)
 
       # get available nodes
       from_deployment = ALLOCATE_DEPLOYMENT
       raise "Crowbar deployment '#{from_deployment}' does not exist" unless @crowbar.deployment_exists?(from_deployment)
-      raise "No non-admin nodes in deployment" unless pool = @crowbar.non_admin_nodes_in_deployment(from_deployment)
-      
-      raise "No available nodes in pool '#{from_deployment}'" if !pool || pool.size == 0
+      pool = @crowbar.non_admin_nodes_in_deployment(from_deployment)
+      raise "No available non-admin nodes in pool '#{from_deployment}'" if !pool || pool.size == 0
 
       # assign a node from pool
+      action_handler.report_progress "Pool size: #{pool.size}"
       node = pool[0]
 
       # prepare for moving by setting the deployment to proposed
       to_deployment = READY_DEPLOYMENT
-      if !@crowbar.deployment_state(to_deployment, "proposed") < 2
-        raise "Error setting deployment to proposed " unless @crowbar.propose_deployment(to_deployment)
-      end
+      @crowbar.propose_deployment(to_deployment)
+      action_handler.report_progress "Deployment \"#{to_deployment}\" set to \"proposed\"\n"
 
       # set alias (name) and reserve
       node["alias"] = name
       node["deployment"] = to_deployment
-      raise "Setting node data failed." unless @crowbar.set_node(node["id"], node)
+      raise "Setting node #{node["alias"]} to deployment \"#{to_deployment}\" failed." unless @crowbar.set_node(node["id"], node)
+      action_handler.report_progress "Crowbar node\'s deployment attirbute set to \"#{to_deployment}\"\n"
 
       # bind the OS NodeRole if missing (eventually set the OS property)
       bind = {:node=>node["id"], :role=>TARGET_NODE_ROLE, :deployment=>to_deployment}
       # blindly add node role > we need to make this smarter and skip if unneeded
       # query node for all its noderoles and skip if noderole is in finished state
-      @crowbar.bind_noderole(bind)
+      node["target_node_role_id"] = @crowbar.bind_node_role(bind)
+      action_handler.report_progress "Crowbar node #{node["id"]} noderole bound to #{TARGET_NODE_ROLE} deployment #{to_deployment} as noderole #{node["target_node_role_id"]}\n"
 
-      # commit the deployment
       @crowbar.commit_deployment(to_deployment)
-      #put(driver_url + API_BASE + "deployments/#{to_deployment}/commit")
+      action_handler.report_progress "Crowbar deployment #{to_deployment} committed\n"
 
       # at this point Crowbar will bring up the node in the background
       # we can return the node handle to the user
-      node["name"]
+      node
 
     end
     

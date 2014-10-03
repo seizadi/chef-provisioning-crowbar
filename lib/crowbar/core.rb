@@ -23,15 +23,28 @@ class Crowbar
   API_BASE = '/api/v2'
 
   def initialize(url = "http://127.0.0.1:3000", u = "crowbar", p = "crowbar")
-      debug "initializing #{@url}"
       @url = url + API_BASE
       self.class.digest_auth u, p
       self.class.base_uri @url
       debug "initialize #{@url}"
   end
 
-  debug_output $stderr
+#  debug_output $stderr
   format :json
+
+  #http://192.168.222.6:3000/api/v2/nodes/1/attribs/provisioner-access_keys
+  def add_sshkey(sshkey)
+    res = self.class.get("/nodes/1/attribs/provisioner-access_keys")
+    if res.code != 200
+      raise("Could not get sshkey on admin node #{res.code} #{res.message}")
+    end
+    debug res
+    res = self.class.put("/nodes/1/attribs/provisioner-access_keys", :body => sshkey)
+    if res.code != 200
+      raise("Could not put sshkey on admin node #{res.code} #{res.message}")
+    end
+    return res
+  end
 
   def commit_deployment(name)
     deployment_set(name,"commit")
@@ -44,8 +57,9 @@ class Crowbar
   def deployment_set(name,state)
     res = self.class.put("/deployments/#{name}/#{state}")
     if res.code != 200
-      raise("Could not set deployment #{name} to #{state}. #{res.code} #{res.response}")
+      raise("Could not set deployment #{name} to #{state}. #{res.code} #{res.message}")
     end
+    return res
   end
 
   def deployment_exists?(name)
@@ -56,15 +70,15 @@ class Crowbar
     exists?("nodes",name)
   end
 
-  def non_admin_nodes_in_deployment(name, attrs=[])
+  def non_admin_nodes_in_deployment(name, attrs={})
     #attrs = {'x-return-attributes' => '["admin"]' } 
     n = nodes_in_deployment(name,attrs)
     n.reject{ |e| e["admin"] == true } || []
   end
 
 
-  def find_node_in_deployment(node,deployment,attrs=[])
-    res = self.class.get("/deployments/#{deployment}/nodes", :headers => {'x-return-attributes' => attrs } )
+  def find_node_in_deployment(node,deploymen,attrs=[])
+    res = self.class.get("/deployments/#{deployment}/nodes", :headers => {'x-return-attributes' => "#{attrs.to_json}" } )
     res.index{|e|e["name"] == node || e["id"] == node} 
   end
 
@@ -79,30 +93,60 @@ class Crowbar
   def ssh_private_key(name)
     res = self.class.get("nodes/#{name}/attribs/#{attrib}")
     if res.code != 200
-      raise("Could not get node #{name} ssh keys")
+      raise("Could not get node \"#{name}\" ssh keys")
     end
+    res
   end
 
-  def node_status(id, state)
-    attrs = {'x-return-attributes' => '["state"]' } 
-    res = self.class.get("/nodes/#{id}", :headers => attrs )
+  def node_status(id)
+    res = self.class.get("http://127.0.0.1:3000/api/status/nodes/#{id}" )
     if res.code != 200
-      raise("Could not get node status #{res.code} #{res.response}")
+      raise("Could not get node status #{res.code} #{res.message}")
+    end
+    res
+  end
+
+  def node_ready(node_id,node_role_id)
+    # get noderole state == 0 and runcount >= 1
+    # get node alive = true
+    nr = self.class.get("/node_roles/#{node_role_id}")
+    node = self.class.get("/nodes/#{node_id}")
+    if nr["state"] == 0 && nr["run_count"] >= 1 && node["alive"] == true
+      return true
+    else
+      return false
     end
   end
 
   def set_node(id, data)
     res = self.class.put("/nodes/#{id}", :body => data)
     if res.code != 200
-      raise("Could not update node #{res.code} #{res.response}")
+      raise("Could not update node #{res.code} #{res.message}")
+    end
+    return res
+  end
+
+  def node(id,attrs=[])
+    res = self.class.get("/nodes/#{id}", :headers => {'x-return-attributes' => attrs } )
+    if res.code != 200
+      raise("Could not get node \"#{id}\" #{res.code} #{res.message}")
     end
   end
 
-  def node(id,attrs={})
-    res = self.class.get("/nodes/#{id}", :headers => attrs )
+  def node_attrib(id,attrib)
+    res = self.class.get("/nodes/#{id}/attribs/#{attrib}")
     if res.code != 200
-      raise("Could not get node #{id} code: #{res.code} #{res.response}")
+      raise("Could not get node \"#{id}\" attrib #{attrib} - #{res.code} #{res.message}")
     end
+    return res
+  end
+
+  def deployment(id,attrs={})
+    res = self.class.get("/deployments/#{id}", :headers => attrs )
+    if res.code != 200
+      raise("Could not get deployment \"#{id}\" #{res.code} #{res.message}")
+    end
+    return res
   end
 
   def power(name,action)
@@ -112,12 +156,14 @@ class Crowbar
     end
   end
 
-  def bind_noderole(data)
-    res = self.class.put("/noderoles", data)
-      raise("Count not set node to role. #{data}")
+  def bind_node_role(data)
+    raise("Count not bind role to node. #{data}") unless
+      res = self.class.post("/node_roles", :body => data)
+    res['id']
   end
 
   private
+
   def exists?(type, name, options={})
     self.class.get("/#{type}/#{name}").code == 200
   end
