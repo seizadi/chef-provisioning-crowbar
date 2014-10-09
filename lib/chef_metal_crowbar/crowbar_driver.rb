@@ -101,22 +101,27 @@ module ChefMetalCrowbar
       debug machine_spec.location
  
       server_id = machine_spec.location['server_id']
-#      node = @crowbar.node(node_id)
-#      if node["alive"] == false
-#        action_handler.perform_action "Powering up machine #{server_id}" do
-#          @crowbar.power(server_id, "on")
-#        end
-#      end
+      unless @crowbar.node_alive?(server_id)
+        action_handler.perform_action "Powering up machine #{server_id}" do
+          @crowbar.power(server_id, "on")
+        end
+      end
 
       nr_id = machine_spec.location['target_node_role_id']
 
+      action_handler.report_progress "Awaiting ready machine..."
       action_handler.perform_action "done waiting for machine id: #{server_id}" do
         loop do 
           break if @crowbar.node_ready(server_id,nr_id)
           sleep 5
         end 
-        action_handler.report_progress "machine is ready. machine id: #{server_id}" 
+        action_handler.report_progress "waited for machine - machine is ready. machine id: #{server_id}" 
       end
+
+      # set the machine to "reserved" to take control away from Crowbar
+      node = @crowbar.node(server_id)
+      node['available'] = false
+      @crowbar.set_node(server_id, node)
 
       # Return the Machine object
       machine_for(machine_spec, machine_options)
@@ -156,13 +161,19 @@ module ChefMetalCrowbar
     # follow getready process to allocate nodes
     def allocate_node(name, machine_options, action_handler)
 
-      # get available nodes
+      # ensure deployment exists
       from_deployment = ALLOCATE_DEPLOYMENT
-      raise "Crowbar deployment '#{from_deployment}' does not exist" unless @crowbar.deployment_exists?(from_deployment)
+      unless @crowbar.deployment_exists?(from_deployment)
+        action_handler.report_progress "Crowbar deployment '#{from_deployment}' does not exist... creating..." do
+          @crowbar.deployment_create(from_deployment)
+        end
+      end
+      
+      # get available nodes
       pool = @crowbar.non_admin_nodes_in_deployment(from_deployment)
       raise "No available non-admin nodes in pool '#{from_deployment}'" if !pool || pool.size == 0
 
-      # assign a node from pool
+      # assign a node
       action_handler.report_progress "Pool size: #{pool.size}"
       node = pool[0]
 

@@ -16,26 +16,34 @@
 # Notes
 # sudo /opt/chef/embedded/bin/gem install chef-zero
 # sudo /opt/chef/embedded/bin/gem install /opt/opencrowbar/chef-metal/chef-metal-crowbar
+# run with chef-client -z 
 
 require 'chef_metal'
 
 with_driver 'crowbar'
  
-  
-# run with chef-client -z 
+num_servers = 1
+ 
+# build sample servers
+1.upto(num_servers) do |i|
+  random = rand(10 ** 4)
+  machine "chef-metal-#{random}" do
+    #chef_environment 'test'
+    #recipe 'mydb'
+    #tag 'mydb_master'
+  end 
+end
+
+
+
+
+
+
+# TODO:
 #with_chef_server 'https://127.0.0.1:443',
 #                 :client_name => 'crowbar',
 #                 :signing_key_filename => '/root/.chef/crowbar.pem'
  
-with_machine_options :crowbar_options => { 
-  'bootstrap_options' => { :key_name => 'crowbar', os: 'ubuntu-12.04' } 
-} 
-num_servers = 1
- 
-# build a sample server
-1.upto(num_servers) do |i|
-  random = rand(10 ** 4)
-  machine "chef-metal-#{random}" do
-#    chef_environment 'test'
-  end 
-end
+#with_machine_options :crowbar_options => { 
+#  'bootstrap_options' => { :key_name => 'crowbar', os: 'ubuntu-12.04' } 
+#} 
