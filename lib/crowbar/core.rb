@@ -46,6 +46,15 @@ class Crowbar
     return res
   end
 
+  def deployment_create(name, parent_id=1)
+    data = { :name => name, :parent_id => parent_id }
+    res = self.class.post("/deployments", :body => data)
+    if res.code != 200
+      raise("Could not create deployment #{name}. #{res.code} #{res.message}")
+    end
+    res
+  end
+
   def commit_deployment(name)
     deployment_set(name,"commit")
   end
@@ -106,12 +115,16 @@ class Crowbar
     res
   end
 
+  def node_alive?(node_id)
+    n = node(node_id, ['alive'])
+    n["alive"]
+  end 
+
   def node_ready(node_id,node_role_id)
     # get noderole state == 0 and runcount >= 1
     # get node alive = true
     nr = self.class.get("/node_roles/#{node_role_id}")
-    node = self.class.get("/nodes/#{node_id}")
-    if nr["state"] == 0 && nr["run_count"] >= 1 && node["alive"] == true
+    if nr["state"] == 0 && nr["run_count"] >= 1 && node_alive?(node_id)
       return true
     else
       return false
@@ -127,10 +140,13 @@ class Crowbar
   end
 
   def node(id,attrs=[])
-    res = self.class.get("/nodes/#{id}", :headers => {'x-return-attributes' => attrs } )
+    my_head = {}
+    attrs.size > 0 && my_head = { :headers => {'x-return-attributes' => attrs.to_json }  }
+    res = self.class.get("/nodes/#{id}", my_head )
     if res.code != 200
       raise("Could not get node \"#{id}\" #{res.code} #{res.message}")
     end
+    res
   end
 
   def node_attrib(id,attrib)
