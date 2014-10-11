@@ -29,7 +29,7 @@ class Crowbar
       debug "initialize #{@url}"
   end
 
-#  debug_output $stderr
+  debug_output $stderr
   format :json
 
   #http://192.168.222.6:3000/api/v2/nodes/1/attribs/provisioner-access_keys
@@ -72,11 +72,17 @@ class Crowbar
   end
 
   def deployment_exists?(name)
-    exists?("deployments",name)
+    res = self.class.get("/deployments/#{name}")
+    debug("res code deployment exists #{res.code}")
+    return false unless res.code == 200
+    true
   end
 
   def node_exists?(name)
-    exists?("nodes",name)
+    res = self.class.get("/nodes/#{name}")
+    debug("res code node exists #{res.code}")
+    return false unless res.code == 200
+    true
   end
 
   def non_admin_nodes_in_deployment(name, attrs={})
@@ -172,6 +178,22 @@ class Crowbar
     end
   end
 
+  def set_node_role_attrib(nr_id, attrib, value)
+    res = self.class.put("/node_roles/#{nr_id}/attribs/#{attrib}", :body => { :value => "#{value}" } )
+    if res.code != 200
+      raise("Could not set node_role #{nr_id} attrib #{attrib} to value #{value}")
+    end
+    res
+  end
+
+  def set_node_attrib(n_id, attrib, value)
+    res = self.class.put("/nodes/#{n_id}/attribs/#{attrib}", :body => { :value => "#{value}" } )
+    if res.code != 200
+      raise("Could not set node #{r_id} attrib #{attrib} to value #{value}")
+    end
+    res
+  end
+
   def bind_node_role(data)
     raise("Count not bind role to node. #{data}") unless
       res = self.class.post("/node_roles", :body => data)
@@ -179,10 +201,6 @@ class Crowbar
   end
 
   private
-
-  def exists?(type, name, options={})
-    self.class.get("/#{type}/#{name}").code == 200
-  end
 
   # debug messages
   def debug(msg)

@@ -65,7 +65,7 @@ module ChefMetalCrowbar
     def allocate_machine(action_handler, machine_spec, machine_options)
       
       if machine_spec.location
-        if !node_exists?(machine_spec.location['server_id'])
+        if !@crowbar.node_exists?(machine_spec.location['server_id'])
           # It doesn't really exist
           action_handler.perform_action "Machine #{machine_spec.location['server_id']} does not really exist.  Recreating ..." do
             machine_spec.location = nil
@@ -90,7 +90,7 @@ module ChefMetalCrowbar
             'driver_url' => driver_url,
             'driver_version' => ChefMetalCrowbar::VERSION,
             'server_id' => server_id,
-            'target_node_role_id' => server["target_node_role_id"]
+            'node_role_id' => server["node_role_id"]
            # 'bootstrap_key' => sshkey
           }
         end
@@ -107,7 +107,7 @@ module ChefMetalCrowbar
         end
       end
 
-      nr_id = machine_spec.location['target_node_role_id']
+      nr_id = machine_spec.location['node_role_id']
 
       action_handler.report_progress "Awaiting ready machine..."
       action_handler.perform_action "done waiting for machine id: #{server_id}" do
@@ -162,14 +162,16 @@ module ChefMetalCrowbar
     def allocate_node(name, machine_options, action_handler)
 
       # ensure deployment exists
-      from_deployment = ALLOCATE_DEPLOYMENT
-      unless @crowbar.deployment_exists?(from_deployment)
-        action_handler.report_progress "Crowbar deployment '#{from_deployment}' does not exist... creating..." do
-          @crowbar.deployment_create(from_deployment)
+      to_deployment = READY_DEPLOYMENT
+      unless @crowbar.deployment_exists?(to_deployment)
+          @crowbar.deployment_create(to_deployment)
+          debug("deployment create")
+        action_handler.report_progress "Crowbar deployment '#{to_deployment}' does not exist... creating..." do
         end
       end
       
       # get available nodes
+      from_deployment = ALLOCATE_DEPLOYMENT
       pool = @crowbar.non_admin_nodes_in_deployment(from_deployment)
       raise "No available non-admin nodes in pool '#{from_deployment}'" if !pool || pool.size == 0
 
@@ -188,12 +190,19 @@ module ChefMetalCrowbar
       raise "Setting node #{node["alias"]} to deployment \"#{to_deployment}\" failed." unless @crowbar.set_node(node["id"], node)
       action_handler.report_progress "Crowbar node\'s deployment attirbute set to \"#{to_deployment}\"\n"
 
-      # bind the OS NodeRole if missing (eventually set the OS property)
+      # bind the NodeRole if missing (eventually set the OS property)
       bind = {:node=>node["id"], :role=>TARGET_NODE_ROLE, :deployment=>to_deployment}
       # blindly add node role > we need to make this smarter and skip if unneeded
       # query node for all its noderoles and skip if noderole is in finished state
-      node["target_node_role_id"] = @crowbar.bind_node_role(bind)
-      action_handler.report_progress "Crowbar node #{node["id"]} noderole bound to #{TARGET_NODE_ROLE} deployment #{to_deployment} as noderole #{node["target_node_role_id"]}\n"
+      node["node_role_id"] = @crowbar.bind_node_role(bind)
+      action_handler.report_progress "Crowbar node #{node["id"]} noderole bound to #{TARGET_NODE_ROLE} deployment #{to_deployment} as noderole #{node["node_role_id"]}\n"
+
+      
+      if machine_options[:crowbar_options][:target_os]
+        target_os = machine_options[:crowbar_options][:target_os]
+        debug("TARGET OS #{target_os}")
+        @crowbar.set_node_attrib(node["id"], "provisioner-target_os", target_os)
+      end
 
       @crowbar.commit_deployment(to_deployment)
       action_handler.report_progress "Crowbar deployment #{to_deployment} committed\n"

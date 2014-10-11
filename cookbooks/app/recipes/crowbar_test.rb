@@ -24,9 +24,15 @@ with_driver 'crowbar'
  
 num_servers = 1
  
+with_machine_options crowbar_options: {
+                        # get target_os from os_support array in
+                        # in /opt/opencrowbar/core/crowbar.yml
+                        target_os: 'centos-6.5'
+}
+
+random = rand(10 ** 4)
 # build sample servers
 1.upto(num_servers) do |i|
-  random = rand(10 ** 4)
   machine "chef-metal-#{random}" do
     #chef_environment 'test'
     #recipe 'mydb'
@@ -34,6 +40,10 @@ num_servers = 1
   end 
 end
 
+machine "chef-metal-another-#{random}" do
+  recipe 'apache'
+  machine_options :crowbar_options => { 'target_os' => 'centos-7' }
+end
 
 
 
