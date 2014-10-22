@@ -34,6 +34,7 @@ random = rand(10 ** 4)
 # build sample servers
 1.upto(num_servers) do |i|
   machine "chef-metal-#{random}" do
+    machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-6.5' }
     #chef_environment 'test'
     #recipe 'mydb'
     #tag 'mydb_master'
@@ -41,13 +42,9 @@ random = rand(10 ** 4)
 end
 
 machine "chef-metal-another-#{random}" do
-  recipe 'apache'
-  machine_options :crowbar_options => { 'target_os' => 'centos-7' }
+#  recipe 'apache'
+  machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-7' }
 end
-
-
-
-
 
 # TODO:
 #with_chef_server 'https://127.0.0.1:443',

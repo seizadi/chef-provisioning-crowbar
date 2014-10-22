@@ -29,7 +29,7 @@ class Crowbar
       debug "initialize #{@url}"
   end
 
-  debug_output $stderr
+#  debug_output $stderr
   format :json
 
   #http://192.168.222.6:3000/api/v2/nodes/1/attribs/provisioner-access_keys
@@ -189,7 +189,7 @@ class Crowbar
   def set_node_attrib(n_id, attrib, value)
     res = self.class.put("/nodes/#{n_id}/attribs/#{attrib}", :body => { :value => "#{value}" } )
     if res.code != 200
-      raise("Could not set node #{r_id} attrib #{attrib} to value #{value}")
+      raise("Could not set node #{n_id} attrib #{attrib} to value #{value}")
     end
     res
   end
