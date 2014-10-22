@@ -271,5 +271,43 @@ module ChefMetalCrowbar
 
     end
     private
-  end
-end
+
+#    def ready_machines(action_handler, machine_spec, machine_options)
+#      debug machine_spec.location
+ 
+      #server_id = machine_spec.location['server_id']
+      #unless @crowbar.node_alive?(server_id)
+        #action_handler.perform_action "Powering up machine #{server_id}" do
+          #@crowbar.power(server_id, "on")
+        #end
+      #end
+
+      #nr_id = machine_spec.location['node_role_id']
+
+      #action_handler.report_progress "Awaiting ready machine..."
+      #action_handler.perform_action "done waiting for machine id: #{server_id}" do
+        #loop do 
+          #break if @crowbar.node_ready(server_id,nr_id)
+          #sleep 5
+        #end 
+        #action_handler.report_progress "waited for machine - machine is ready. machine id: #{server_id}" 
+      #end
+
+      # set the machine to "reserved" to take control away from Crowbar
+      #node = @crowbar.node(server_id)
+      #node['available'] = false
+      #@crowbar.set_node(server_id, node)
+
+      # Return the Machine object
+      #machine_for(machine_spec, machine_options)
+#    end
+    # Ready machines in batch, in parallel if possible.
+    #def ready_machines(action_handler, specs_and_options, parallelizer)
+      #parallelizer.parallelize(specs_and_options) do |machine_spec, machine_options|
+        #machine = ready_machine(add_prefix(machine_spec, action_handler), machine_spec, machine_options)
+        #yield machine if block_given?
+        #machine
+      #end.to_a
+    #end
+  end # Class
+end # Module

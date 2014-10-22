@@ -43,7 +43,7 @@ end
 
 machine "chef-metal-another-#{random}" do
 #  recipe 'apache'
-  machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-7' }
+  machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-7.0' }
 end
 
 # TODO:

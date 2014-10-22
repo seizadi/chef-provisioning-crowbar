@@ -189,7 +189,7 @@ class Crowbar
   def set_node_attrib(n_id, attrib, value)
     res = self.class.put("/nodes/#{n_id}/attribs/#{attrib}", :body => { :value => "#{value}" } )
     if res.code != 200
-      raise("Could not set node #{n_id} attrib #{attrib} to value #{value}")
+      raise("Could not set node #{n_id} attrib #{attrib} to value #{value}: code #{res.code} #{res.message}")
     end
     res
   end
