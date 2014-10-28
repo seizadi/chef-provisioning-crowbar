@@ -16,3 +16,15 @@ Before you start, your chef-metal box must be on the crowbar administration netw
 ```bash
 $ sudo ip a add 192.168.124.2/24 dev docker0
 ```
+
+### Example gem build script and test run
+
+```bash ~/build_and_run_chef-metal-crowbar.sh
+CMCROWBAR_REPO=/VMs/repos/chef-metal-crowbar/
+cd ${CMCROWBAR_REPO}
+sudo gem build chef-metal-crowbar.gemspec 
+sudo gem install --ignore-dependencies --no-ri --no-rdoc chef-metal-crowbar-0.0.1.gem
+cd ${CMCROWBAR_REPO}/cookbooks/app/recipes/
+#chef-client -l debug -z crowbar_test.rb
+chef-client -z crowbar_test.rb
+```
