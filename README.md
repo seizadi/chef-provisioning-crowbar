@@ -19,6 +19,11 @@ $ sudo ip a add 192.168.124.2/24 dev docker0
 
 ### Example gem build script and test run
 
+This is an example file to run and build chef metal crowbar.
+
+All the exciting stuff is happening in chef-metal-crowbar/cookbooks/app/recipes/, but event that's not a lot of exciting.
+
+
  /$HOME/build_and_test_chef-metal-crowbar.sh
 
 ```bash
