@@ -19,7 +19,9 @@ $ sudo ip a add 192.168.124.2/24 dev docker0
 
 ### Example gem build script and test run
 
-```bash ~/build_and_run_chef-metal-crowbar.sh
+ /$HOME/build_and_test_chef-metal-crowbar.sh
+
+```bash
 CMCROWBAR_REPO=/VMs/repos/chef-metal-crowbar/
 cd ${CMCROWBAR_REPO}
 sudo gem build chef-metal-crowbar.gemspec 
