@@ -92,7 +92,7 @@ class Crowbar
   end
 
 
-  def find_node_in_deployment(node,deploymen,attrs=[])
+  def find_node_in_deployment(node,deployment,attrs=[])
     res = self.class.get("/deployments/#{deployment}/nodes", :headers => {'x-return-attributes' => "#{attrs.to_json}" } )
     res.index{|e|e["name"] == node || e["id"] == node} 
   end
