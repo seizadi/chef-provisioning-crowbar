@@ -22,19 +22,19 @@ require 'chef_metal'
 
 with_driver 'crowbar'
  
-num_servers = 1
  
 with_machine_options crowbar_options: {
                         # get target_os from os_support array in
                         # in /opt/opencrowbar/core/crowbar.yml
-                        target_os: 'centos-6.5'
+                        'provisioner-target_os' => 'centos-6.5'
 }
 
+num_servers = 1
 random = rand(10 ** 4)
 # build sample servers
 1.upto(num_servers) do |i|
   machine "chef-metal-#{random}" do
-    machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-6.5' }
+    #machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-6.5' }
     #chef_environment 'test'
     #recipe 'mydb'
     #tag 'mydb_master'
