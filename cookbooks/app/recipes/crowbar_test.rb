@@ -18,7 +18,7 @@
 # sudo /opt/chef/embedded/bin/gem install /opt/opencrowbar/chef-provisioning/chef-provisioning-crowbar
 # run with chef-client -z 
 
-require 'chef_provisioning'
+require 'chef/provisioning'
 
 with_driver 'crowbar'
  
