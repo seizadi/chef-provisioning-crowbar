@@ -13,11 +13,11 @@
 # limitations under the License.
 
 $:.unshift(File.dirname(__FILE__) + '/lib')
-require 'chef_provisioning_crowbar/version'
+require 'chef/provisioning/crowbar_driver/version'
 
 Gem::Specification.new do |s|
   s.name = 'chef-provisioning-crowbar'
-  s.version = ChefProvisioningCrowbar::VERSION
+  s.version = Chef::Provisioning::CrowbarDriver::VERSION
   s.platform = Gem::Platform::RUBY
   s.extra_rdoc_files = ['README.md', 'LICENSE' ]
   s.summary = 'Driver for creating Crowbar servers in Chef Provisioning.'

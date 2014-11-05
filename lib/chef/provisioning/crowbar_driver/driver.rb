@@ -29,9 +29,11 @@ require 'cheffish/merged_config'
 require 'chef/provisioning/crowbar_driver/recipe_dsl'
 require 'crowbar/core'
 
-module ChefProvisioningCrowbar
+class Chef
+module Provisioning
+module Crowbar
 
-  class CrowbarDriver < ChefProvisioning::Driver
+  class Driver < ChefProvisioning::Driver
 
     #include Chef::Mixin::ShellOut
 
@@ -283,4 +285,6 @@ module ChefProvisioningCrowbar
     private
 
   end # Class
+end
 end # Module
+end
