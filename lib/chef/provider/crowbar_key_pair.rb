@@ -13,7 +13,7 @@
 # limitations under the License.
 
 require 'chef/provider/lwrp_base'
-require 'chef_metal_crowbar/crowbar_driver'
+require 'chef_provisioning_crowbar/crowbar_driver'
 
 class Chef::Provider::CrowbarKeyPair < Chef::Provider::LWRPBase
 
@@ -124,7 +124,7 @@ class Chef::Provider::CrowbarKeyPair < Chef::Provider::LWRPBase
   end
 
   def new_driver
-    run_context.chef_metal.driver_for(new_resource.driver)
+    run_context.chef_provisioning.driver_for(new_resource.driver)
   end
 
   def ensure_keys(action)
@@ -195,7 +195,7 @@ class Chef::Provider::CrowbarKeyPair < Chef::Provider::LWRPBase
   end
 
   def load_current_resource
-    if !new_driver.kind_of?(ChefMetalCrowbar::CrowbarDriver)
+    if !new_driver.kind_of?(ChefProvisioningCrowbar::CrowbarDriver)
       raise 'crowbar_key_pair only works with crowbar_driver'
     end
     @current_resource = Chef::Resource::CrowbarKeyPair.new(new_resource.name, run_context)

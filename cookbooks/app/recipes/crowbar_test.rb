@@ -15,10 +15,10 @@
 
 # Notes
 # sudo /opt/chef/embedded/bin/gem install chef-zero
-# sudo /opt/chef/embedded/bin/gem install /opt/opencrowbar/chef-metal/chef-metal-crowbar
+# sudo /opt/chef/embedded/bin/gem install /opt/opencrowbar/chef-provisioning/chef-provisioning-crowbar
 # run with chef-client -z 
 
-require 'chef_metal'
+require 'chef_provisioning'
 
 with_driver 'crowbar'
  
@@ -33,7 +33,7 @@ num_servers = 1
 random = rand(10 ** 4)
 # build sample servers
 1.upto(num_servers) do |i|
-  machine "chef-metal-#{random}" do
+  machine "chef-provisioning-#{random}" do
     #machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-6.5' }
     #chef_environment 'test'
     #recipe 'mydb'
@@ -41,7 +41,7 @@ random = rand(10 ** 4)
   end 
 end
 
-machine "chef-metal-another-#{random}" do
+machine "chef-provisioning-another-#{random}" do
 #  recipe 'apache'
   machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-7.0' }
 end

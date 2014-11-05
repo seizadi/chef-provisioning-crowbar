@@ -13,23 +13,23 @@
 # limitations under the License.
 
 $:.unshift(File.dirname(__FILE__) + '/lib')
-require 'chef_metal_crowbar/version'
+require 'chef_provisioning_crowbar/version'
 
 Gem::Specification.new do |s|
-  s.name = 'chef-metal-crowbar'
-  s.version = ChefMetalCrowbar::VERSION
+  s.name = 'chef-provisioning-crowbar'
+  s.version = ChefProvisioningCrowbar::VERSION
   s.platform = Gem::Platform::RUBY
   s.extra_rdoc_files = ['README.md', 'LICENSE' ]
-  s.summary = 'Driver for creating Crowbar servers in Chef Metal.'
+  s.summary = 'Driver for creating Crowbar servers in Chef Provisioning.'
   s.license = 'Apache 2'
   s.description = 'Crowbar is an open-source, multi-purpose node deployment tool.'
   s.author = 'Rob Hirschfeld'
   s.email = 'rob@zehicle.com'
-  s.homepage = 'https://github.com/opscode/chef-metal-crowbar'
+  s.homepage = 'https://github.com/opscode/chef-provisioning-crowbar'
 
   #s.add_dependency 'chef'
   #s.add_dependency 'cheffish', '>= 0.4'
-  s.add_dependency 'chef-metal', '~> 0'
+  s.add_dependency 'chef-provisioning', '~> 0'
   s.add_dependency 'httparty', '~> 0'
 
   #s.add_development_dependency 'rspec'

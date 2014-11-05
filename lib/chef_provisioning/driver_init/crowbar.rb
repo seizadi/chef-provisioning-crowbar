@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'chef_metal_crowbar/crowbar_driver'
+require 'chef_provisioning_crowbar/crowbar_driver'
 
-ChefMetal.register_driver_class("crowbar", ChefMetalCrowbar::CrowbarDriver)
+ChefProvisioning.register_driver_class("crowbar", ChefProvisioningCrowbar::CrowbarDriver)

@@ -13,25 +13,25 @@
 # limitations under the License.
 
 #require 'chef/mixin/shell_out'
-require 'chef_metal/driver'
-require 'chef_metal/machine/windows_machine'
-require 'chef_metal/machine/unix_machine'
-require 'chef_metal/machine_spec'
-require 'chef_metal/convergence_strategy/install_msi'
-require 'chef_metal/convergence_strategy/install_sh'
-require 'chef_metal/convergence_strategy/install_cached'
-require 'chef_metal/convergence_strategy/no_converge'
-require 'chef_metal/transport/ssh'
-require 'chef_metal_crowbar/version'
+require 'chef_provisioning/driver'
+require 'chef_provisioning/machine/windows_machine'
+require 'chef_provisioning/machine/unix_machine'
+require 'chef_provisioning/machine_spec'
+require 'chef_provisioning/convergence_strategy/install_msi'
+require 'chef_provisioning/convergence_strategy/install_sh'
+require 'chef_provisioning/convergence_strategy/install_cached'
+require 'chef_provisioning/convergence_strategy/no_converge'
+require 'chef_provisioning/transport/ssh'
+require 'chef_provisioning_crowbar/version'
 require 'etc'
 require 'time'
 require 'cheffish/merged_config'
-require 'chef_metal_crowbar/recipe_dsl'
+require 'chef_provisioning_crowbar/recipe_dsl'
 require 'crowbar/core'
 
-module ChefMetalCrowbar
+module ChefProvisioningCrowbar
 
-  class CrowbarDriver < ChefMetal::Driver
+  class CrowbarDriver < ChefProvisioning::Driver
 
     #include Chef::Mixin::ShellOut
 
@@ -89,7 +89,7 @@ module ChefMetalCrowbar
           debug "allocate server_id = #{server_id}"
           machine_spec.location = {
             'driver_url' => driver_url,
-            'driver_version' => ChefMetalCrowbar::VERSION,
+            'driver_version' => ChefProvisioningCrowbar::VERSION,
             'server_id' => server_id,
             'node_role_id' => server["node_role_id"]
            # 'bootstrap_key' => sshkey
@@ -141,9 +141,9 @@ module ChefMetalCrowbar
       node_ipv4_admin_net_ip = node_admin_addresses['value'][0].split('/')[0]
       #node_ipv6_admin_net_ip = node_admin_addresses['value'][1]
       
-      transport = ChefMetal::Transport::SSH.new(node_ipv4_admin_net_ip, 'root', ssh_options, {}, config)
-      convergence_strategy = ChefMetal::ConvergenceStrategy::InstallCached.new(machine_options[:convergence_options], config)
-      ChefMetal::Machine::UnixMachine.new(machine_spec, transport, convergence_strategy)
+      transport = ChefProvisioning::Transport::SSH.new(node_ipv4_admin_net_ip, 'root', ssh_options, {}, config)
+      convergence_strategy = ChefProvisioning::ConvergenceStrategy::InstallCached.new(machine_options[:convergence_options], config)
+      ChefProvisioning::Machine::UnixMachine.new(machine_spec, transport, convergence_strategy)
     end
 
     def create_ssh_transport(machine_spec)
@@ -158,7 +158,7 @@ module ChefMetalCrowbar
         :keys => [ '$HOME/.ssh/id_rsa' ],
         :keys_only => true
       }
-      ChefMetal::Transport::SSH.new(hostname, username, ssh_options, options, config) end
+      ChefProvisioning::Transport::SSH.new(hostname, username, ssh_options, options, config) end
 
     def ensure_deployment(to_deployment)
       unless @crowbar.deployment_exists?(to_deployment)
@@ -245,7 +245,7 @@ module ChefMetalCrowbar
             debug "allocate server_id = #{server_id}"
             machine_spec.location = {
               'driver_url' => driver_url,
-              'driver_version' => ChefMetalCrowbar::VERSION,
+              'driver_version' => ChefProvisioningCrowbar::VERSION,
               'server_id' => server_id,
               'node_role_id' => server["node_role_id"]
             }

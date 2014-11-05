@@ -12,18 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'chef_metal_crowbar/crowbar_driver'
-require 'chef/resource/crowbar_key_pair'
-require 'chef/provider/crowbar_key_pair'
-
-class Chef
-  module DSL
-    module Recipe
-      def with_crowbar_driver(provider, driver_options = nil, &block)
-        config = Cheffish::MergedConfig.new({ :driver_options => driver_options }, run_context.config)
-        driver = ChefMetalCrowbar::CrowbarDriver.from_provider(provider, config)
-        run_context.chef_metal.with_driver(driver, &block)
-      end
-    end
+#%w{chef-provisioning chef-provisioning-crowbar}.each do |pkg|
+%w{chef-zero cheffish chef-provisioning}.each do |pkg|
+  chef_gem "#{pkg}" do
+    action :install
   end
 end

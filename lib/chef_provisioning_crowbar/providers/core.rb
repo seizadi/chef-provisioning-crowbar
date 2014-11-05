@@ -13,11 +13,11 @@
 # limitations under the License.
 
 # crowbar:core:https://[url]/api/v2/
-module ChefMetalCrowbar
+module ChefProvisioningCrowbar
   module Providers
-    class Core < ChefMetalCrowbar::CrowbarDriver
+    class Core < ChefProvisioningCrowbar::CrowbarDriver
 
-      ChefMetalCrowbar::CrowbarDriver.register_provider_class('core', ChefMetalCrowbar::Providers::Base)
+      ChefProvisioningCrowbar::CrowbarDriver.register_provider_class('core', ChefProvisioningCrowbar::Providers::Base)
 
       def creator
         compute_options[:username]

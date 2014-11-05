@@ -15,9 +15,9 @@
 
 # Notes
 # sudo /opt/chef/embedded/bin/gem install chef-zero
-# sudo /opt/chef/embedded/bin/gem install /opt/opencrowbar/chef-metal/chef-metal-crowbar
+# sudo /opt/chef/embedded/bin/gem install /opt/opencrowbar/chef-provisioning/chef-provisioning-crowbar
 
-require 'chef-metal'
+require 'chef-provisioning'
  
 random = rand(10 ** 4)
   

@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'chef_metal'
+require 'chef_provisioning'
 
 class Chef::Resource::CrowbarKeyPair < Chef::Resource::LWRPBase
   self.resource_name = 'crowbar_key_pair'
 
   def initialize(*args)
     super
-    @driver = run_context.chef_metal.current_driver
+    @driver = run_context.chef_provisioning.current_driver
   end
 
   actions :create, :delete, :nothing

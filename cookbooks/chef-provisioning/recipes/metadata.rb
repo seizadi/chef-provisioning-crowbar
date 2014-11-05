@@ -12,9 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#%w{chef-metal chef-metal-crowbar}.each do |pkg|
-%w{chef-zero cheffish chef-metal}.each do |pkg|
-  chef_gem "#{pkg}" do
-    action :install
-  end
-end
+name    'chef-provisioning'
+version '0.0.1'
