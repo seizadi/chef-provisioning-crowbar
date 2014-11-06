@@ -14,4 +14,4 @@
 
 require 'chef/provisioning/crowbar_driver/driver'
 
-ChefProvisioning.register_driver_class("crowbar", Chef::Provisioning::CrowbarDriver::Crowbar)
+Chef::Provisioning.register_driver_class("crowbar", Chef::Provisioning::CrowbarDriver::Driver)

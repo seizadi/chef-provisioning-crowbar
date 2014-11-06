@@ -14,26 +14,21 @@
 
 #require 'chef/mixin/shell_out'
 require 'chef/provisioning/driver'
-require 'chef/provisioning/machine/windows_machine'
 require 'chef/provisioning/machine/unix_machine'
 require 'chef/provisioning/machine_spec'
-require 'chef/provisioning/convergence_strategy/install_msi'
-require 'chef/provisioning/convergence_strategy/install_sh'
 require 'chef/provisioning/convergence_strategy/install_cached'
-require 'chef/provisioning/convergence_strategy/no_converge'
 require 'chef/provisioning/transport/ssh'
 require 'chef/provisioning/crowbar_driver/version'
 require 'etc'
 require 'time'
-require 'cheffish/merged_config'
-require 'chef/provisioning/crowbar_driver/recipe_dsl'
+#require 'cheffish/merged_config'
 require 'crowbar/core'
 
 class Chef
 module Provisioning
-module Crowbar
+module CrowbarDriver
 
-  class Driver < ChefProvisioning::Driver
+  class Driver < Chef::Provisioning::Driver
 
     #include Chef::Mixin::ShellOut
 
@@ -43,18 +38,17 @@ module Crowbar
     TARGET_NODE_ROLE      = "crowbar-installed-node"
     API_BASE              = "/api/v2"
 
-
     def initialize(driver_url, config)
       super(driver_url, config)
       @crowbar = Crowbar.new
       #config[:private_key_paths] = [ "$HOME/.ssh/id_rsa" ]
-      config[:log_level] = :debug
+      #config[:log_level] = :debug
       # TODO: setup the deployment here?
     end
     
     # Passed in a driver_url, and a config in the format of Driver.config.
     def self.from_url(driver_url, config)
-      CrowbarDriver.new(driver_url, config)
+      Driver.new(driver_url, config)
     end
 
     def self.canonicalize_url(driver_url, config)
@@ -91,7 +85,7 @@ module Crowbar
           debug "allocate server_id = #{server_id}"
           machine_spec.location = {
             'driver_url' => driver_url,
-            'driver_version' => ChefProvisioningCrowbar::VERSION,
+            'driver_version' => Chef::Provisioning::CrowbarDriver::VERSION,
             'server_id' => server_id,
             'node_role_id' => server["node_role_id"]
            # 'bootstrap_key' => sshkey
@@ -143,9 +137,9 @@ module Crowbar
       node_ipv4_admin_net_ip = node_admin_addresses['value'][0].split('/')[0]
       #node_ipv6_admin_net_ip = node_admin_addresses['value'][1]
       
-      transport = ChefProvisioning::Transport::SSH.new(node_ipv4_admin_net_ip, 'root', ssh_options, {}, config)
-      convergence_strategy = ChefProvisioning::ConvergenceStrategy::InstallCached.new(machine_options[:convergence_options], config)
-      ChefProvisioning::Machine::UnixMachine.new(machine_spec, transport, convergence_strategy)
+      transport = Chef::Provisioning::Transport::SSH.new(node_ipv4_admin_net_ip, 'root', ssh_options, {}, config)
+      convergence_strategy = Chef::Provisioning::ConvergenceStrategy::InstallCached.new(machine_options[:convergence_options], config)
+      Chef::Provisioning::Machine::UnixMachine.new(machine_spec, transport, convergence_strategy)
     end
 
     def create_ssh_transport(machine_spec)
@@ -160,7 +154,7 @@ module Crowbar
         :keys => [ '$HOME/.ssh/id_rsa' ],
         :keys_only => true
       }
-      ChefProvisioning::Transport::SSH.new(hostname, username, ssh_options, options, config) end
+      Chef::Provisioning::Transport::SSH.new(hostname, username, ssh_options, options, config) end
 
     def ensure_deployment(to_deployment)
       unless @crowbar.deployment_exists?(to_deployment)
@@ -247,7 +241,7 @@ module Crowbar
             debug "allocate server_id = #{server_id}"
             machine_spec.location = {
               'driver_url' => driver_url,
-              'driver_version' => ChefProvisioningCrowbar::VERSION,
+              'driver_version' => Chef::Provisioning::CrowbarDriver::VERSION,
               'server_id' => server_id,
               'node_role_id' => server["node_role_id"]
             }

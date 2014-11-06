@@ -29,7 +29,7 @@ class Crowbar
       debug "initialize #{@url}"
   end
 
-#  debug_output $stderr
+  debug_output $stderr
   format :json
 
   #http://192.168.222.6:3000/api/v2/nodes/1/attribs/provisioner-access_keys
