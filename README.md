@@ -4,9 +4,6 @@ This repo contains the interface between Chef Provisioning (https://github.com/o
 
 > make sure you are running Ruby 1.9 and related gems for this tool.  check `ruby -v` to verify.
 
-gem build crowbar.gemspec
-sudo gem install -f -V --ignore-dependencies ./chef-provisioning-crowbar-0.0.1.gem 
-
 ## Background
 A chef-provisioning "allocated-state" machine is a Crowbar "alive" machine (part of the Annealer graph) that is has been moved from the 'system' deployment to another deployment - by default, it's called the "ready" deployment.
 
