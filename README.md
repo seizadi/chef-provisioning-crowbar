@@ -29,11 +29,13 @@ All the exciting stuff is happening in chef-provisioning-crowbar/cookbooks/app/r
  /$HOME/build_and_test_chef-provisioning-crowbar.sh
 
 ```bash
-CMCROWBAR_REPO=/VMs/repos/chef-provisioning-crowbar/
-cd ${CMCROWBAR_REPO}
+CPC_REPO_PATH=<path to chef-provisioning-crowbar git repo>
+cd ${CPC_REPO_PATH}
 sudo gem build chef-provisioning-crowbar.gemspec 
 sudo gem install --ignore-dependencies --no-ri --no-rdoc chef-provisioning-crowbar-0.0.1.gem
-cd ${CMCROWBAR_REPO}/cookbooks/app/recipes/
+cd ${CPC_REPO_PATH}/cookbooks/app/recipes/
+# run with debugging..
 #chef-client -l debug -z crowbar_test.rb
+# or not
 chef-client -z crowbar_test.rb
 ```
