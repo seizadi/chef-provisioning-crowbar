@@ -2,6 +2,8 @@
 
 This repo contains the interface between Chef Provisioning (https://github.com/opscode/chef-provisioning/) and OpenCrowbar.
 
+> make sure you are running Ruby 1.9 and related gems for this tool.  check `ruby -v` to verify.
+
 gem build crowbar.gemspec
 sudo gem install -f -V --ignore-dependencies ./chef-provisioning-crowbar-0.0.1.gem 
 
@@ -12,6 +14,8 @@ A chef-provisioning "ready" machine is a Crowbar node in the proper deployment (
 
 ## Important
 Before you start, your chef-provisioning box must be on the crowbar administration network, so it can ssh into the slave nodes and do its cheffy thing.  In our typical development environments, that's simply a matter of setting your host OSs network as follows:
+
+You also need the HTTParty, Chef and Chef-Metal gems: `sudo gem install httparty chef chef-metal`
 
 ```bash
 $ sudo ip a add 192.168.124.2/24 dev docker0
