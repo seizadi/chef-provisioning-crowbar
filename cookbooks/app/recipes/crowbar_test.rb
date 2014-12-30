@@ -16,6 +16,9 @@
 require 'chef/provisioning'
 with_driver 'crowbar'
 
+with_chef_server 'https://192.168.124.10',
+                 :client_name => 'metal',
+                 :signing_key_filename => '/etc/chef/client.pem'
 
 # Crowbar these days is defaulting to installing Centos-7.0
 # on its slave nodes.
@@ -25,35 +28,13 @@ with_driver 'crowbar'
 # get target_os values from the os_support array
 # You can add more.
 
-# set your default OS for this recipe:
-with_machine_options crowbar_options: {
-                        'provisioner-target_os' => 'centos-6.5'
-}
+# You can set your default OS for this recipe:
+#with_machine_options crowbar_options: {
+#                        'provisioner-target_os' => 'centos-6.5'
+#}
 
-# build sample servers
-
-# build a few with defaults from crowbar_options, above.
-num_servers = 1
-1.upto(num_servers) do |i|
-  machine "chef-provisioning-#{random}" do
-  end 
-end
-
-# build one with an overrided OS
-
-machine "chef-provisioning-another-#{random}" do
+# build one with an overridden OS
+machine "chef-provisioning-example-#{rand(100)}" do
   machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-7.0' }
 end
 
-
-# TODO:
-#with_chef_server 'https://127.0.0.1:443',
-#                 :client_name => 'crowbar',
-#                 :signing_key_filename => '/root/.chef/crowbar.pem'
- 
-#with_machine_options :crowbar_options => { 
-#  'bootstrap_options' => { :key_name => 'crowbar', os: 'ubuntu-12.04' } 
-#} 
-    #chef_environment 'test'
-    #recipe 'mydb'
-    #tag 'mydb_master'
