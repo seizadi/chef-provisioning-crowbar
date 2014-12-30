@@ -211,7 +211,7 @@ module CrowbarDriver
     
     # debug messages
     def debug(msg)
-      Chef::Log.info msg
+      Chef::Log.debug msg
     end
 
     # Allocate many machines simultaneously
@@ -257,7 +257,6 @@ module CrowbarDriver
     # follow getready process to allocate nodes
     def allocate_node(name, machine_options, action_handler)
 
-      puts("SINGULAR")
       role = TARGET_NODE_ROLE
       to_deployment = READY_DEPLOYMENT
       
@@ -266,7 +265,7 @@ module CrowbarDriver
       @crowbar.propose_deployment(to_deployment)
 
       my_node = get_non_admin_nodes([name])[0]
-      puts(my_node)
+      #puts(my_node)
       set_node_and_bind_noderole(my_node,name,role,to_deployment,machine_options[:crowbar_options])
 
       @crowbar.commit_deployment(to_deployment)

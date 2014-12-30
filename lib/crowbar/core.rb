@@ -204,7 +204,7 @@ class Crowbar
 
   # debug messages
   def debug(msg)
-    puts "\nDEBUG: #{msg}"
+    #puts "\nDEBUG: #{msg}" if debug_on == True
   end
 
 #  # connect to the Crowbar API
