@@ -22,11 +22,23 @@ class Crowbar
 
   API_BASE = '/api/v2'
 
+
+
   def initialize(url = "http://127.0.0.1:3000", u = "crowbar", p = "crowbar")
       @url = url + API_BASE
       self.class.digest_auth u, p
       self.class.base_uri @url
       debug "initialize #{@url}"
+  end
+
+  @llevel = :info
+  def log_level(level)
+    @llevel = level
+    debug("incoming #{level} instance #{@llevel}")
+  end
+
+  def debug(msg)
+    puts "\nCROWBAR #{@llevel}: #{msg}" if @llevel == :debug
   end
 
 #  debug_output $stderr
@@ -200,12 +212,9 @@ class Crowbar
     res['id']
   end
 
+
   private
 
-  # debug messages
-  def debug(msg)
-    #puts "\nDEBUG: #{msg}" if debug_on == True
-  end
 
 #  # connect to the Crowbar API
 #  # this currently AUTHS every call, we need to optimize that so that we can reuse the auth tokens

@@ -30,11 +30,9 @@ module CrowbarDriver
 
   class Driver < Chef::Provisioning::Driver
 
-    #include Chef::Mixin::ShellOut
 
     ALLOCATE_DEPLOYMENT   = 'system'
     READY_DEPLOYMENT      = 'ready'
-    #TARGET_NODE_ROLE      = "crowbar-managed-node"
     TARGET_NODE_ROLE      = "crowbar-installed-node"
     API_BASE              = "/api/v2"
 
@@ -43,7 +41,6 @@ module CrowbarDriver
       @crowbar = Crowbar.new
       #config[:private_key_paths] = [ "$HOME/.ssh/id_rsa" ]
       #config[:log_level] = :debug
-      # TODO: setup the deployment here?
     end
     
     # Passed in a driver_url, and a config in the format of Driver.config.
@@ -60,6 +57,8 @@ module CrowbarDriver
     # converge, execute, file and directory.
 
     def allocate_machine(action_handler, machine_spec, machine_options)
+
+      @crowbar.log_level(config[:log_level])
       
       if machine_spec.location
         if !@crowbar.node_exists?(machine_spec.location['server_id'])
@@ -159,8 +158,7 @@ module CrowbarDriver
     def ensure_deployment(to_deployment)
       unless @crowbar.deployment_exists?(to_deployment)
           @crowbar.deployment_create(to_deployment)
-          debug("deployment create #{to_deployment}")
-          #action_handler.report_progress "Crowbar deployment '#{to_deployment}' does not exist... creating..." do
+          debug("Crowbar deployment '#{to_deployment}' does not exist... creating...")
       end
     end
 
@@ -176,7 +174,6 @@ module CrowbarDriver
         pool.each do |node|
           if node['alias'] == name
             debug "Node #{name} already exists, skipping."
-            #tion_handler.report_progress "Node #{name} already exists, skipping."
             break
           end
           good_nodes << node
