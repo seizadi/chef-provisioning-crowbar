@@ -27,9 +27,9 @@ Gem::Specification.new do |s|
   s.email = 'judd@newgoliath.com'
   s.homepage = 'https://github.com/newgoliath/chef-provisioning-crowbar'
 
-  s.add_runtime_dependency 'chef', '~> 11.0'
+  s.add_runtime_dependency 'chef', '~> 12.0.3'
 
-  s.add_dependency 'chef-provisioning', '~> 0.15'
+  s.add_dependency 'chef-provisioning', '~> 0.18'
   s.add_dependency 'httparty', '~> 0'
 
   #s.add_development_dependency 'rspec'
