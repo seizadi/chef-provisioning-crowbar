@@ -4,10 +4,26 @@
 
 This repo contains the interface between Chef Provisioning (https://github.com/opscode/chef-provisioning/) and OpenCrowbar.
 
-> make sure you are running Ruby 1.9 and related gems for this tool.  check `ruby -v` to verify.
+> Download chef-dk* - it now has chef-provisioning gems included. It is found
+  here: https://docs.chef.io/install_dk.html
+  
+> Please refer to the above site for the latest chef-dk package here is the
+  version I downloaded as of this writing:
 
-> Better yet: *use chef-dk* - it now has chef-provisioning gems included.
+```bash
+[root@opencrowbar ~]# wget https://opscode-omnibus-packages.s3.amazonaws.com/el/6/x86_64/chefdk-0.4.0-1.x86_64.rpm
+[root@opencrowbar ~]# rpm -Uvh chefdk-0.4.0-1.x86_64.rpm 
+```
 
+> After installation run chef verify to make sure you have properly installed
+  all chef components included in chef-dk:
+
+```bash
+[root@opencrowbar ~]# chef verify
+..............
+Verification of component '....' succeeded.
+```
+ 
 ## Background
 
 Crowbar discovers and manages your gear - preferably hardware nodes.  The typical model would be to get Crowbar running on your admin network, and start booting up your gear.  Crowbar will discover and inventory your gear automatically.  You can then use Chef Provisioning to tell Crowbar to do all those things it's good at: install the OS you want, configure the BIOS, RAID, networking, and manage the power states of the gear.  You can keep using Chef-Provisioning and Crowbar when you want to power down or re-image those nodes.
@@ -20,36 +36,79 @@ A Chef Provisioning "ready" machine is a Crowbar node which has completed the ta
 
 ## Example
 
-Chef Provisioning with Crowbar will treat your gear like a cloud! 
+Chef Provisioning with Crowbar will treat your gear like a cloud!
+
+In this example we will stand up a OpenStack Single Node instace using 
+Chef-OpenStack, Chef-Provisiong and OpenCrowbar.
+
+Here is we show for this example with have one node d00-8c-fa-03-b9-b4
+available for our test:
+
+```bash
+[root@opencrowbar ~]# crowbar nodes list | grep '"alias"'
+    "alias": "system-phantom",
+    "alias": "d00-8c-fa-03-b9-b4",
+    "alias": "opencrowbar",
+```
+
+It is best practice to do the provisioning as crowbar or another user rather
+than root:
+
+```bash
+[root@opencrowbar ~]# su - crowbar
+```
+
+
+Setup environment to use chef-dk tooling and environment:
+
+```bash
+$ echo 'eval "$(chef shell-init bash)"' >> chef-dk.rc
+$ source chef-dk.rc
+```
+
+Install the Chef-Provisiong Crowbar driver gem and its dependent gem httparty:
+
+```bash
+$ gem install httparty
+$ git clone https://github.com/seizadi/chef-provisioning-crowbar.git
+$ cd chef-provisioning-crowbar/
+$ gem build chef-provisioning-crowbar.gemspec
+  Successfully built RubyGem
+  Name: chef-provisioning-crowbar
+  Version: 0.0.2
+  File: chef-provisioning-crowbar-0.0.2.gem
+$ gem install --ignore-dependencies --no-ri --no-rdoc chef-provisioning-crowbar-0.0.2.gem
+Successfully installed chef-provisioning-crowbar-0.0.2
+1 gem installed
+```
+
+Pull in the Chef OpenStack Test Project:
+ 
+```bash
+[root@opencrowbar ~]# su - crowbar
+$ git clone https://github.com/seizadi/chef-openstack-testing-stack.git testing-stack
+$ cd testing-stack
+$ chef exec rake berks_vendor
+$ chef exec ruby -e "require 'openssl'; puts OpenSSL::PKey::RSA.new(2048).to_pem" > .chef/validator.pem
+```
+We will be using Chef-Zero rather than the built-in OpenCrowbar Chef Server,
+so we will the local .chef directory from our project:
+
+```bash
+[crowbar@opencrowbar testing-stack]$ ls -a .chef
+.  ..  encrypted_data_bag_secret  knife.rb  validator.pem
+```
+
 
 Example Session:
 
-See the nodes available from Crowbar:
+Run Rake task to create all-in-one OpenStack from node in Crowbar:
 
 ```bash
-bash-4.1# crowbar deployments nodes "system" | grep '"alias"'
-    "alias": "d52-54-32-f9-00-00",
-    "alias": "d52-54-32-f8-00-00",
-    "alias": "d52-54-32-f5-00-00",
-    "alias": "d52-54-32-f6-00-00",
-    "alias": "d52-54-32-f7-00-00",
-    "alias": "be727e682d0d",
-bash-4.1# 
+$ chef exec rake aio_nova_crowbar
 ```
 
-And you can see them with `knife` against the chef server in Crowbar:
-
-```bash
-$ knife node list -s http://192.168.124.10
-be727e682d0d.crowbar.org
-d52-54-32-f5-00-00.crowbar.org
-d52-54-32-f6-00-00.crowbar.org
-d52-54-32-f7-00-00.crowbar.org
-d52-54-32-f8-00-00.crowbar.org
-d52-54-32-f9-00-00.crowbar.org
-```
-
-So, to provision one of these, run the example recipe:
+So, to provision here is what the important part of the Chef recipe:
 
 Example Recipe:
 
