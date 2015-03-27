@@ -12,30 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# Notes
-# sudo /opt/chef/embedded/bin/gem install chef-zero
-# sudo /opt/chef/embedded/bin/gem install /opt/opencrowbar/chef-provisioning/chef-provisioning-crowbar
-
 require 'chef-provisioning'
- 
-random = rand(10 ** 4)
-  
-with_chef_server 'https://127.0.0.1:443',
-                 :client_name => 'crowbar',
-                 :signing_key_filename => '/root/.chef/crowbar.pem'
- 
-with_provisioner_options(
-  'bootstrap_options' => {
-    os: 'ubuntu-12.04'
-  }
-)
- 
-num_servers = 1
+   
+with_driver 'crowbar:http://10.49.12.20:3000'
+with_driver_options :crowbar_user => 'crowbar', :driver_config => 'crowbar'
+
+random = rand(10 ** 4) 
  
 # build a sample server
-1.upto(num_servers) do |i|
-  machine "hostname-#{random}" do
-    chef_environment 'test'
-  end 
+# build one with an overridden OS
+machine "chef-provisioning-example-#{rand(100)}" do
+  machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-7.0' }
 end

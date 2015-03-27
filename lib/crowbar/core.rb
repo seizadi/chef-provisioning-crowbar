@@ -125,8 +125,9 @@ class Crowbar
     res
   end
 
+  #FIXME remove hardcoded constant here... Soheil
   def node_status(id)
-    res = self.class.get("http://127.0.0.1:3000/api/status/nodes/#{id}" )
+    res = self.class.get("http://10.49.12.20:3000/api/status/nodes/#{id}" )
     if res.code != 200
       raise("Could not get node status #{res.code} #{res.message}")
     end
@@ -142,6 +143,7 @@ class Crowbar
     # get noderole state == 0 and runcount >= 1
     # get node alive = true
     nr = self.class.get("/node_roles/#{node_role_id}")
+    debug nr
     if nr["state"] == 0 && nr["run_count"] >= 1 && node_alive?(node_id)
       return true
     else

@@ -38,7 +38,8 @@ module CrowbarDriver
 
     def initialize(driver_url, config)
       super(driver_url, config)
-      @crowbar = Crowbar.new
+      scheme, crowbar_url = driver_url.split(':', 2)
+      @crowbar = Crowbar.new(crowbar_url)
       #config[:private_key_paths] = [ "$HOME/.ssh/id_rsa" ]
       #config[:log_level] = :debug
     end
@@ -98,7 +99,7 @@ module CrowbarDriver
     # but will pick up machine_configs that match
     def ready_machine(action_handler, machine_spec, machine_options)
       debug machine_spec.location
- 
+
       server_id = machine_spec.location['server_id']
       unless @crowbar.node_alive?(server_id)
         action_handler.perform_action "Powering up machine #{server_id}" do

@@ -4,25 +4,6 @@
 
 This repo contains the interface between Chef Provisioning (https://github.com/opscode/chef-provisioning/) and OpenCrowbar.
 
-> Download chef-dk* - it now has chef-provisioning gems included. It is found
-  here: https://docs.chef.io/install_dk.html
-  
-> Please refer to the above site for the latest chef-dk package here is the
-  version I downloaded as of this writing:
-
-```bash
-[root@opencrowbar ~]# wget https://opscode-omnibus-packages.s3.amazonaws.com/el/6/x86_64/chefdk-0.4.0-1.x86_64.rpm
-[root@opencrowbar ~]# rpm -Uvh chefdk-0.4.0-1.x86_64.rpm 
-```
-
-> After installation run chef verify to make sure you have properly installed
-  all chef components included in chef-dk:
-
-```bash
-[root@opencrowbar ~]# chef verify
-..............
-Verification of component '....' succeeded.
-```
  
 ## Background
 
@@ -34,14 +15,130 @@ When you write a recipe with Chef Provisioning and Crowbar, Chef Provisioning re
 
 A Chef Provisioning "ready" machine is a Crowbar node which has completed the tasks in the proper deployment ("ready"), and Crowbar has given up managing it until further notice.  In Crowbar terms, that means that the milestone noderole for the deployment is 'active', and the node is marked in Crowbar as node["available"]:false so the annealer will not manage the node's noderoles.  
 
+## Setup Chef-Provisioning on you Chef Workstation
+
+> Download chef-dk* - it now has chef-provisioning gems included. It is found
+  here: https://docs.chef.io/install_dk.html
+  
+> Please refer to the above site for the latest chef-dk package here is the
+  current version as of this writing for MacOS, your installation will
+  vary depending on the platform e.g. MacOS vs CentOS-6:
+
+```bash
+$ wget https://opscode-omnibus-packages.s3.amazonaws.com/mac_os_x/10.8/x86_64/chefdk-0.4.0-1.dmg
+$ open chefdk-0.4.0-1.dmg
+```
+
+> After installation run chef verify to make sure you have properly installed
+  all chef components included in chef-dk:
+
+```bash
+$ chef verify
+..............
+Verification of component '....' succeeded.
+```
+
 ## Example
 
 Chef Provisioning with Crowbar will treat your gear like a cloud!
 
+So, to provision here is what the important part of the Chef recipe:
+
+Example Recipe:
+
+```ruby
+require 'chef-provisioning'
+   
+with_driver 'crowbar:http://10.49.12.20:3000'
+with_driver_options :crowbar_user => 'crowbar', :driver_config => 'crowbar'
+
+random = rand(10 ** 4) 
+ 
+# build a sample server with a specified OS
+machine "chef-provisioning-example-#{rand(100)}" do
+  machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-7.0' }
+end
+```
+
+Example chef-client Invocation:
+Setup environment to use chef-dk tooling and environment:
+
+```bash
+$ echo 'eval "$(chef shell-init bash)"' >> chef-dk.rc
+$ source chef-dk.rc
+```
+
+Install the Chef-Provisiong Crowbar driver gem and its dependent gem httparty:
+
+```bash
+$ gem install httparty
+$ git clone https://github.com/seizadi/chef-provisioning-crowbar.git
+$ cd chef-provisioning-crowbar/
+$ gem build chef-provisioning-crowbar.gemspec
+  Successfully built RubyGem
+  Name: chef-provisioning-crowbar
+  Version: 0.0.3
+  File: chef-provisioning-crowbar-0.0.3.gem
+$ gem install --ignore-dependencies --no-ri --no-rdoc chef-provisioning-crowbar
+Successfully installed chef-provisioning-crowbar-0.0.3
+1 gem installed
+```
+
+Setup environment for running Chef-Zero:
+
+```bash
+$ chef exec ruby -e "require 'openssl'; File.binwrite('.chef/validator.pem', OpenSSL::PKey::RSA.new(2048).to_pem)"
+```
+
+Now run Chef-Zero provisioning:
+```bash
+$ chef-client -z
+```
+
+and you will see the new node being allocated and made ready.  Here's a few nodes in the "ready"
+deployment.
+
+There is a sample for creating multiple servers:
+```ruby
+require 'chef/provisioning'
+   
+with_driver 'crowbar:http://10.49.12.20:3000'
+with_driver_options :crowbar_user => 'crowbar', :driver_config => 'crowbar'
+
+random = rand(10 ** 4) 
+num_servers = 2
+ 
+# build a cluster
+1.upto(num_servers) do |i|
+  machine "hostname-#{random}" do
+    with_machine_options crowbar_options: { 'provisioner-target_os' => 'centos-7.0' }
+  end 
+end
+```
+
+Example chef-client Invocation:
+
+```bash
+$ chef-client -z ./crowbar_test.rb 
+```
+
+
+```bash
+# crowbar deployments nodes "ready" | grep '"alias"'
+    "alias": "chef-provisioning-another-brother-42",
+    "alias": "chef-provisioning-another-brother-97",
+    "alias": "chef-provisioning-example-56",
+    "alias": "chef-provisioning-another-brother-80",
+```
+
+
+Real world use would have you put a run-list in the `machine` resource, so chef can use the nodes to actually do things.
+
 In this example we will stand up a OpenStack Single Node instace using 
 Chef-OpenStack, Chef-Provisiong and OpenCrowbar.
 
-Here is we show for this example with have one node d00-8c-fa-03-b9-b4
+Using crowbar CLI make sure you have nodes available for use by
+Chef-Provisioning. Below you see we have one node d00-8c-fa-03-b9-b4
 available for our test:
 
 ```bash
@@ -91,6 +188,7 @@ $ cd testing-stack
 $ chef exec rake berks_vendor
 $ chef exec ruby -e "require 'openssl'; puts OpenSSL::PKey::RSA.new(2048).to_pem" > .chef/validator.pem
 ```
+
 We will be using Chef-Zero rather than the built-in OpenCrowbar Chef Server,
 so we will the local .chef directory from our project:
 
@@ -99,7 +197,6 @@ so we will the local .chef directory from our project:
 .  ..  encrypted_data_bag_secret  knife.rb  validator.pem
 ```
 
-
 Example Session:
 
 Run Rake task to create all-in-one OpenStack from node in Crowbar:
@@ -107,47 +204,6 @@ Run Rake task to create all-in-one OpenStack from node in Crowbar:
 ```bash
 $ chef exec rake aio_nova_crowbar
 ```
-
-So, to provision here is what the important part of the Chef recipe:
-
-Example Recipe:
-
-```ruby
-require 'chef/provisioning'
-with_driver 'crowbar'
-
-# Here I indicate the chef server running inside Crowbar.  If you like, use your own Chef Server, or just
-# use Chef Zero by calling chef-client -z <recipe_name>.
-
-with_chef_server 'https://192.168.124.10',
-                 :client_name => 'metal',
-                 :signing_key_filename => '/home/metal/.chef/metal.pem'
-
-machine "chef-provisioning-#{rand(1000)}" do
-  machine_options :crowbar_options => { 'provisioner-target_os' => 'centos-7.0' }
-end
-```
-
-Example chef-client Invocation:
-
-```bash
-$ chef-client ./crowbar_test.rb 
-```
-
-and you will see the new node being allocated and made ready.  Here's a few nodes in the "ready"
-deployment.
-
-```bash
-# crowbar deployments nodes "ready" | grep '"alias"'
-    "alias": "chef-provisioning-another-brother-42",
-    "alias": "chef-provisioning-another-brother-97",
-    "alias": "chef-provisioning-example-56",
-    "alias": "chef-provisioning-another-brother-80",
-```
-
-
-Real world use would have you put a run-list in the `machine` resource, so chef can use the nodes to actually do things.
-
 ## Setup
 
 ### Networking
